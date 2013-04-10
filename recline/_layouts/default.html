@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="shortcut icon" type="image/x-icon" href="{{ page.root }}/images/stern-favicon.ico"> 
+  <title>{{ page.title }} - stern flightmap </title>
+
+  <!-- Le HTML5 shim, for IE6-8 support of HTML elements -->
+  <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+
+  <link rel="stylesheet" href="{{ page.root }}vendor/bootstrap/2.0.2/css/bootstrap.css" />
+
+  {% if page.recline-deps %}
+    {% include recline-deps.html %}
+  {% endif %}
+
+  <!-- link rel="stylesheet" href="vendor/bootstrap/2.0.2/css/bootstrap-responsive.css" -->
+
+  <link href="{{ page.root }}css-site/pygments.css" rel="stylesheet" type="text/css" />
+  <link href="{{ page.root }}css-site/style.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div class="navbar navbar-fixed-top">
+  <div class="navbar-inner">
+    <div class="container">
+      <a class="logo-icon pull-left" href="/">
+        <img src="{{ page.root }}images/sternlogo-41x55.png" />
+      </a>
+      <a class="brand" href="{{page.root}}"><strong>stern flightmap</strong></a>
+      <ul class="nav">
+        <li class="divider-vertical"></li>
+        <li>
+          <a href="{{page.root}}">
+            <i class="icon-random icon-white"></i>
+          	Flüge
+          </a>
+        </li>
+        <li class="divider-vertical"></li>
+        <li>
+          <a href="{{page.root}}planes.html">
+            <i class="icon-plane icon-white"></i>
+          	Flugzeuge 
+          </a>
+        </li>
+        <li class="divider-vertical"></li>
+        <li>
+          <a href="{{page.root}}planes.html">
+            <i class="icon-road icon-white"></i>
+          	Flughäfen
+          </a>
+        </li>
+        <li class="divider-vertical"></li>
+        <li>
+          <a href="{{page.root}}anleitung.html">
+            <i class="icon-book icon-white"></i>
+            Anleitung 
+          </a>
+        </li>
+      </ul>
+      <ul class="nav pull-right">
+        <li>
+	   <a href="http://opendatacity.de" style="font-size: 80%">2012.04.04 by OpenDataCity</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+{{content}}
+
+<section class="footer">
+   <div class="container">
+    <div class="row">
+      <div class="span12">
+	&nbsp;
+      </div>
+    </div>
+   </div>
+</section>
+
+</body>
+</html>
