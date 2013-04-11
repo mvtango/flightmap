@@ -12,6 +12,8 @@ import logging
 import codecs
 import bz2
 import traceback
+import copy 
+import simplejson
 
 _here=os.path.split(__file__)[0]
 locale.setlocale(locale.LC_ALL, "de_DE.utf8")
@@ -50,19 +52,20 @@ parser.add_argument('--find', action="store",help="find aircraft position, regis
 parser.add_argument('--near', action="store",help="find aircrafts near lat:lng see --near_factor for parameters", default="")
 parser.add_argument('--near_factor',action="store",help="set parameters, default is 0.1. Factor is calculated as the sum of the sqares of the lat and lng differences",type=float,default=.1)
 parser.add_argument('--copy',action="store_const",help="make output format = input format", default=0, const=1)
+parser.add_argument('--flight', action="store",help="output file for flight geoJSON", default=False)
 
 
 args = vars(parser.parse_args())
 
 # output_fields=["fn","rn","time","lat","lng","head","speed","alt","reg"]
 
-output_fields=["time", "reg","type","lat","lng","alt","speed","head","flight","radar","reason","stime"]
+output_fields=["time", "reg","type","lat","lng","alt","speed","head","flight","radar","reason","squawk","stime"]
 output_base="raw/extracted"
 
 # fieldnames=["time","flight","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp"]
 
 def map_rec(rec,where="") :
-	for ic in ("head","alt","speed","stamp") :
+	for ic in ("head","alt","speed","stamp","squawk") :
 		try :
 			rec[ic]=int(rec[ic])
 		except ValueError :
@@ -114,11 +117,12 @@ def seek_pos(st) :
 	return False
 
 already={  }
+flights={ }
 
-
-def test_mintime(rec,threshold={},output=None) :
+def test_threshold(rec,threshold={},output=None,flights=False) :
 		#logging.debug("Testing %s" % repr(rec))
 		registration=rec["reg"]
+		new_flight=False
 		if not registration in already :
 			rec["reason"]="new"
 			already[registration]={ "output": rec, "silenced" : None }
@@ -134,16 +138,38 @@ def test_mintime(rec,threshold={},output=None) :
 				if ((vi=="stamp") and recorded["silenced"] and (abs(rec[vi]-recorded["silenced"][vi])>va)):
 					recorded["silenced"]["reason"]="timegap"
 					output.writerow(recorded["silenced"])
+					if flights :
+						push_flight(recorded["silenced"])
+						new_flight=True
 					# logger.debug("threshold for last silenced record reached for %s" % vi)
 					recorded["silenced"]=None
 				recorded["silenced"]=None
 				recorded["output"]=rec
+				if flights :
+					push_flight(rec,new=new_flight)
 				rec["reason"]="thr %s>%s" % (vi,va)
 				return True
 		# logger.debug ("--- will be silenced")
 		recorded["silenced"]=rec
 		return False
 
+def push_flight(rec,new=False) :
+	key=rec["hex"]
+	point={}
+	for k in ("lat","lng","alt","head","speed","stamp","stime") :
+		point[k]=rec[k]
+	if not key in flights :
+		info={ "flights" : [ [point] ] }
+		for k in ("reg","hex","type") :
+			info[k]=rec[k]
+		flights[key]=info
+	else :
+		plane=flights[key]
+		if new :
+			plane["flights"].append([point])
+		else :
+			plane["flights"][-1].append(point)
+			
 
 
 if __name__== "__main__" :
@@ -205,7 +231,7 @@ if __name__== "__main__" :
 		inp=f_open(fn)
 		recc=0
 		records=csv.DictReader(inp, fieldnames=fieldnames, delimiter=args["input_delimiter"])
-		testfunc=test_mintime
+		testfunc=test_threshold
 		for rec in records :
 			try :
 				recc=recc+1
@@ -243,7 +269,7 @@ if __name__== "__main__" :
 					output_channel=outfile
 				rec=map_rec(rec,where="%s:%s" % (os.path.split(fn)[1],recc))
 				reca=reca+1
-				if testfunc(rec,threshold={ "stamp" : args["every"]*60, "head" : args["turn"], "alt" : args["sink"], "speed" : args["accel"] },output=output_channel) :
+				if testfunc(rec,threshold={ "stamp" : args["every"]*60, "head" : args["turn"], "alt" : args["sink"], "speed" : args["accel"] },output=output_channel,flights=args["flight"]) :
 					output_channel.writerow(rec)
 					reco=reco+1
 			except Exception,e :
@@ -257,4 +283,29 @@ if __name__== "__main__" :
 	else :
 		if output_message :
 			logger.info(output_message)
+	if args["flight"] :
+		if args["flight"]=="-" :
+			o=sys.stdout
+		else :
+			o=open(args["flight"],"w") 
+		fs=[]
+		for (hcode,plane) in flights.items() :
+			props={}
+			for (k,v) in plane.items() :
+				if type(v) == type("") :
+					props[k]=v 
+			for flight in plane["flights"] :
+				fprops=copy.copy(props)
+				fprops["start"]=flight[0]["stime"]
+				fprops["end"]=flight[-1]["stime"]
+				fprops["duration"]=flight[-1]["stamp"]-flight[0]["stamp"]
+				fprops["alt"]=[ a["alt"] for a in flight ]
+				fprops["speed"]=[ a["speed"] for a in flight ]
 
+				flightid="%s-%s" % (hcode,flight[0]["stime"].replace(" ",""))
+				flightjson= { "properties" : fprops, "id" : flightid, "type" : "Feature", 
+				               "geometry" : { "type" : "LineString", 
+				               "coordinates" : [ [a["lng"],a["lat"]] for a in flight] }  }
+				fs.append(flightjson)
+		simplejson.dump(fs,o)
+		logger.info("%s flights recorded" % len(fs))
