@@ -52,7 +52,8 @@ parser.add_argument('--find', action="store",help="find aircraft position, regis
 parser.add_argument('--near', action="store",help="find aircrafts near lat:lng see --near_factor for parameters", default="")
 parser.add_argument('--near_factor',action="store",help="set parameters, default is 0.1. Factor is calculated as the sum of the sqares of the lat and lng differences",type=float,default=.1)
 parser.add_argument('--copy',action="store_const",help="make output format = input format", default=0, const=1)
-parser.add_argument('--flight', action="store",help="output file for flight geoJSON", default=False)
+parser.add_argument('--flightgap', action="store",help="start a new flight after N minutes without data", default=False)
+parser.add_argument('--flightfile', action="store",help="output file for flight geoJSON, default: stdout", default=sys.stdout)
 
 
 args = vars(parser.parse_args())
@@ -122,7 +123,6 @@ flights={ }
 def test_threshold(rec,threshold={},output=None,flights=False) :
 		#logging.debug("Testing %s" % repr(rec))
 		registration=rec["reg"]
-		new_flight=False
 		if not registration in already :
 			rec["reason"]="new"
 			already[registration]={ "output": rec, "silenced" : None }
@@ -140,13 +140,12 @@ def test_threshold(rec,threshold={},output=None,flights=False) :
 					output.writerow(recorded["silenced"])
 					if flights :
 						push_flight(recorded["silenced"])
-						new_flight=True
 					# logger.debug("threshold for last silenced record reached for %s" % vi)
 					recorded["silenced"]=None
 				recorded["silenced"]=None
 				recorded["output"]=rec
 				if flights :
-					push_flight(rec,new=new_flight)
+					push_flight(rec)
 				rec["reason"]="thr %s>%s" % (vi,va)
 				return True
 		# logger.debug ("--- will be silenced")
@@ -155,6 +154,7 @@ def test_threshold(rec,threshold={},output=None,flights=False) :
 
 def push_flight(rec,new=False) :
 	key=rec["hex"]
+	sec=int(args["flightgap"])*60
 	point={}
 	for k in ("lat","lng","alt","head","speed","stamp","stime") :
 		point[k]=rec[k]
@@ -165,8 +165,11 @@ def push_flight(rec,new=False) :
 		flights[key]=info
 	else :
 		plane=flights[key]
-		if new :
+		elapsed=(point["stamp"]-plane["flights"][-1][-1]["stamp"])
+		# logger.info("Delta: %s < %s" % (elapsed,sec))
+		if elapsed>sec :
 			plane["flights"].append([point])
+			# logger.info("New flight #%s" % len(plane["flights"]))
 		else :
 			plane["flights"][-1].append(point)
 			
@@ -269,7 +272,7 @@ if __name__== "__main__" :
 					output_channel=outfile
 				rec=map_rec(rec,where="%s:%s" % (os.path.split(fn)[1],recc))
 				reca=reca+1
-				if testfunc(rec,threshold={ "stamp" : args["every"]*60, "head" : args["turn"], "alt" : args["sink"], "speed" : args["accel"] },output=output_channel,flights=args["flight"]) :
+				if testfunc(rec,threshold={ "stamp" : args["every"]*60, "head" : args["turn"], "alt" : args["sink"], "speed" : args["accel"] },output=output_channel,flights=args["flightgap"]) :
 					output_channel.writerow(rec)
 					reco=reco+1
 			except Exception,e :
@@ -283,11 +286,11 @@ if __name__== "__main__" :
 	else :
 		if output_message :
 			logger.info(output_message)
-	if args["flight"] :
-		if args["flight"]=="-" :
-			o=sys.stdout
+	if args["flightgap"] :
+		if not hasattr(args["flightfile"],"write") :
+			o=open(args["flightfile"],"w") 
 		else :
-			o=open(args["flight"],"w") 
+			o=args["flightfile"]
 		fs=[]
 		for (hcode,plane) in flights.items() :
 			props={}
@@ -300,7 +303,7 @@ if __name__== "__main__" :
 				fprops["end"]=flight[-1]["stime"]
 				fprops["duration"]=flight[-1]["stamp"]-flight[0]["stamp"]
 				fprops["alt"]=[ a["alt"] for a in flight ]
-				fprops["speed"]=[ a["speed"] for a in flight ]
+				fprops["points"]=[ p for p in flight ]
 
 				flightid="%s-%s" % (hcode,flight[0]["stime"].replace(" ",""))
 				flightjson= { "properties" : fprops, "id" : flightid, "type" : "Feature", 
