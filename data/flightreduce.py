@@ -272,7 +272,7 @@ if __name__== "__main__" :
 					output_channel=outfile
 				rec=map_rec(rec,where="%s:%s" % (os.path.split(fn)[1],recc))
 				reca=reca+1
-				if testfunc(rec,threshold={ "stamp" : args["every"]*60, "head" : args["turn"], "alt" : args["sink"], "speed" : args["accel"] },output=output_channel,flights=args["flightgap"]) :
+				if testfunc(rec,threshold={ "stamp" : args["every"], "head" : args["turn"], "alt" : args["sink"], "speed" : args["accel"] },output=output_channel,flights=args["flightgap"]) :
 					output_channel.writerow(rec)
 					reco=reco+1
 			except Exception,e :
