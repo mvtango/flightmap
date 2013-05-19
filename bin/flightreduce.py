@@ -14,6 +14,7 @@ import bz2
 import traceback
 import copy 
 import simplejson
+from flightmap.airportlocator import nearest_airport
 
 _here=os.path.split(__file__)[0]
 locale.setlocale(locale.LC_ALL, "de_DE.utf8")
@@ -23,7 +24,7 @@ logger=logging.getLogger(__name__)
 
 bases={"filtered" : "raw/217.11.52.54/fly/filtered",
        "full"     : "raw/217.11.52.54/fly/dumps" ,
-       "local"    : "tsv"}
+       "local"    : "/home/martin/projekte/flightmap/data/tsv"}
 
 
 
@@ -33,27 +34,14 @@ fieldnames=["time","flight","hex","lat","lng","head","alt","speed","squawk","rad
 
 parser = argparse.ArgumentParser(description="fd24 extractor", conflict_handler='resolve')
 parser.add_argument('infiles',nargs="*")
-parser.add_argument('--output',action="store",help="output file, default is stdout. Files will be accessible in http://projekte.ftd.de/~mvirtel/flightdata/extracted/ and below ", default=sys.stdout)
-parser.add_argument('--every',action="store",help="record positions only every N minutes",type=int, metavar="N", default=60)
-parser.add_argument('--turn',action="store",help="record positions if heading changes more than N degrees",type=int, metavar="N", default=400)
-parser.add_argument('--accel',action="store",help="record positions if speed changes more than N mph",type=int, metavar="N", default=4000)
-parser.add_argument('--sink',action="store",help="record positions if altitude changes more than N feet",type=int, metavar="N", default=400000)
-parser.add_argument('--slower',action="store",help="record positions only if speed below N; if set to 0, don't filter by speed - this is the default",type=int, metavar="N", default=0)
 parser.add_argument('--listfiles',action="store_const",help="list files only, no output", default=0, const=1)
-parser.add_argument('--by_registration',action="store_const",help="output a different file for every aircraft registration code, see filname_template for setting the filename and path", default=0, const=1)
 parser.add_argument('--registration',action="store",help="search for flight registration", default=None)
-parser.add_argument('--filename_template',action="store",help="filename template for matched records", default="raw/extracted/by-registration/reg-%(reg)s.csv")
 parser.add_argument('--after',action="store",help="files after Year-Month-Day (exclusive)", default="2012-07-01")
 parser.add_argument('--before',action="store",help="files before Year-Month-Day (exclusive)", default=datetime.datetime.now().strftime("%Y-%m-%d"))
 parser.add_argument('--basedir', action="store",help="base directory for selection, try %s" % ",".join(['"%s"' % a for a in bases.keys()]),default="raw/217.11.52.54/fly/filtered")
-parser.add_argument('--output_delimiter', action="store",help="delimiter character for output file(s), default is ';'",default=";")
-parser.add_argument('--input_delimiter', action="store",help="delimiter character for input file(s), default is '<tab>'",default="\t")
-parser.add_argument('--find', action="store",help="find aircraft position, registration@year-month-day:hour:minute", default="")
-parser.add_argument('--near', action="store",help="find aircrafts near lat:lng see --near_factor for parameters", default="")
-parser.add_argument('--near_factor',action="store",help="set parameters, default is 0.1. Factor is calculated as the sum of the sqares of the lat and lng differences",type=float,default=.1)
-parser.add_argument('--copy',action="store_const",help="make output format = input format", default=0, const=1)
-parser.add_argument('--flightgap', action="store",help="start a new flight after N minutes without data", default=False)
+parser.add_argument('--flightgap', action="store",help="start a new flight after N minutes without data", default=30)
 parser.add_argument('--flightfile', action="store",help="output file for flight geoJSON, default: stdout", default=sys.stdout)
+parser.add_argument('--input_delimiter', action="store",help="delimiter character for input file(s), default is '<tab>'",default="\t")
 
 
 args = vars(parser.parse_args())
@@ -74,11 +62,12 @@ def map_rec(rec,where="") :
 		
 	for ic in ("lat","lng") :
 		try :
-			if rec[ic].find(".") == -1 :
-				raise(ValueError,"no . in float")
+			# if rec[ic].find(".") == -1 :
+			#	raise(ValueError,"no . in float")
 			rec[ic]=float(rec[ic])
 		except ValueError,e :
-			logger.error("%s %s=%s in %s (%s)" (e,ic,rec[ic],repr(rec),where))
+			logger.error("%s : %s, %s" % (e,ic,repr(rec)))
+			#logger.error("%s %s=%s in %s (%s)" (e,ic,rec[ic],repr(rec),where))
 	rec["stime"]=datetime.datetime.fromtimestamp(rec["stamp"]).strftime('%Y-%m-%d %H:%M:%S')
 	return rec
 
@@ -123,6 +112,8 @@ flights={ }
 def test_threshold(rec,threshold={},output=None,flights=False) :
 		#logging.debug("Testing %s" % repr(rec))
 		registration=rec["reg"]
+		if flights :
+			push_flight(rec)
 		if not registration in already :
 			rec["reason"]="new"
 			already[registration]={ "output": rec, "silenced" : None }
@@ -138,17 +129,14 @@ def test_threshold(rec,threshold={},output=None,flights=False) :
 				if ((vi=="stamp") and recorded["silenced"] and (abs(rec[vi]-recorded["silenced"][vi])>va)):
 					recorded["silenced"]["reason"]="timegap"
 					output.writerow(recorded["silenced"])
-					if flights :
-						push_flight(recorded["silenced"])
 					# logger.debug("threshold for last silenced record reached for %s" % vi)
 					recorded["silenced"]=None
 				recorded["silenced"]=None
 				recorded["output"]=rec
-				if flights :
-					push_flight(rec)
 				rec["reason"]="thr %s>%s" % (vi,va)
 				return True
 		# logger.debug ("--- will be silenced")
+		
 		recorded["silenced"]=rec
 		return False
 
@@ -156,7 +144,7 @@ def push_flight(rec,new=False) :
 	key=rec["hex"]
 	sec=int(args["flightgap"])*60
 	point={}
-	for k in ("lat","lng","alt","head","speed","stamp","stime") :
+	for k in ("lat","lng","alt","head","speed","stamp","stime","flight","squawk","radar") :
 		point[k]=rec[k]
 	if not key in flights :
 		info={ "flights" : [ [point] ] }
@@ -177,6 +165,7 @@ def push_flight(rec,new=False) :
 
 if __name__== "__main__" :
 	import pprint
+	startmoment=datetime.datetime.now()
 	if not os.path.exists(args["basedir"]) :
 		if args["basedir"] in bases:
 			args["basedir"]=bases[args["basedir"]]
@@ -192,44 +181,11 @@ if __name__== "__main__" :
 		available.sort(lambda a,b: cmp(a,b))
 		args["infiles"]=[os.path.join(args["basedir"],a) for a in available if ((a>args["after"]) and (a[:len(args["before"])]<=args["before"]))]
 		logger.debug("%s files selected from %s in range [%s,%s]" % (len(args["infiles"]),args["basedir"],args["after"],args["before"]))
-	if args["copy"] :
-		for an in ("delimiter",) :
-			args["output_%s" % an] =args["input_%s" % an ]
-		output_fields=fieldnames
-	if hasattr(args["output"],"write") :
-		off=args["output"]
-		output_message=False
-	else :
-		off=open(os.path.join(output_base,args["output"]),"w")
-		output_message="Find output in http://projekte.ftd.de/~mvirtel/flightdata/extracted/%s" % args["output"]
-	if args["find"] :
-		p=seek_pos(args["find"])
-		if p :
-			logger.info("%s - %s:%s" % (args["find"],p["lat"],p["lng"]))
-		else :
-			logger.info("%s - no position" % (args["find"]))
-		exit()
-	if args["near"] :
-		dlat,dlng=args["near"].split(":")
-		dlat=float(dlat)
-		dlng=float(dlng)
-		nearness=lambda rec : pow(float(rec["lat"])-dlat,2)+pow(float(rec["lng"])-dlng,2)
-		args["near_factor"]=pow(args["near_factor"],2)
-	else : 
-		nearness=False
-	if not args["by_registration"] :
-		off.write("%s\n" % args["output_delimiter"].join(output_fields))
-		outfile=csv.DictWriter(off,fieldnames=output_fields,delimiter=args["output_delimiter"],extrasaction="ignore")
-	outfiles={}
-	rect=0 
-	reco=0
-	reca=0
-	startmoment=datetime.datetime.now()
+	rect=0
 	for fn in args["infiles"] :
 		if args["listfiles"] :
 			logger.debug("selected: %s" % fn)
-			continue
-			
+			continue			
 		logger.debug("Opening %s for input " % fn)
 		inp=f_open(fn)
 		recc=0
@@ -244,48 +200,14 @@ if __name__== "__main__" :
 				if args["registration"] :
 					if not rec["reg"][:len(args["registration"])]==args["registration"] :
 						continue
-				if args["slower"] :
-					if int(rec["speed"])>=args["slower"] :
-						continue
-				if nearness :
-					nn=nearness(rec)
-					if (nn>args["near_factor"]) :
-						continue
-				output_channel=False
-				if "filename" in output_fields :
-					rec["filename"]=os.path.split(fn)[1]
-				if "lineno" in output_fields :
-					rec["lineno"]=recc
-				if args["by_registration"] :
-					if not rec["reg"] in outfiles :
-						of=args["filename_template"] % rec
-						logger.debug("output to: %s" % of)
-						od=os.path.split(of)[0]
-						if not os.path.exists(od) :
-							os.path.makedirs(od)
-						ofo=open(of,"w")
-						ofo.write("%s\n" % args["output_delimiter"].join(output_fields))
-						outfiles[rec["reg"]]=csv.DictWriter(ofo,fieldnames=output_fields,delimiter=args["output_delimiter"], extrasaction="ignore")
-					output_channel=outfiles[rec["reg"]]
-					reco=reco+1
-				else :
-					output_channel=outfile
-				rec=map_rec(rec,where="%s:%s" % (os.path.split(fn)[1],recc))
-				reca=reca+1
-				if testfunc(rec,threshold={ "stamp" : args["every"], "head" : args["turn"], "alt" : args["sink"], "speed" : args["accel"] },output=output_channel,flights=args["flightgap"]) :
-					output_channel.writerow(rec)
-					reco=reco+1
+				map_rec(rec)
+				push_flight(rec)
 			except Exception,e :
 				logger.error(traceback.format_exc())
 				logger.error("error %s for %s (#%s)" % (e,pprint.pformat(rec),recc))
 		inp.close()
 	elapsed=datetime.datetime.now()-startmoment
-	logger.info("%.2f Mio. records read, %s records (of %s) written in %s min %s sec." % (float(rect)/1000000,reco,reca,int(elapsed.seconds/60),elapsed.seconds % 60))
-	if args["by_registration"] :
-		logger.info("%s file(s) written, find them at http://projekte.ftd.de/~mvirtel/flightdata/extracted/by_registration/" % len(outfiles.keys()))
-	else :
-		if output_message :
-			logger.info(output_message)
+	logger.info("%.2f Mio. records read in %s min %s sec." % (float(rect)/1000000,int(elapsed.seconds/60),elapsed.seconds % 60))
 	if args["flightgap"] :
 		if not hasattr(args["flightfile"],"write") :
 			o=open(args["flightfile"],"w") 
@@ -299,8 +221,10 @@ if __name__== "__main__" :
 					props[k]=v 
 			for flight in plane["flights"] :
 				fprops=copy.copy(props)
-				fprops["start"]=flight[0]["stime"]
-				fprops["end"]=flight[-1]["stime"]
+				fprops["starttime"]=flight[0]["stime"]
+				fprops["endtime"]=flight[-1]["stime"]
+				fprops["start"]=nearest_airport(float(flight[0]["lng"]),float(flight[0]["lat"]))[0]
+				fprops["end"]=nearest_airport(float(flight[-1]["lng"]),float(flight[-1]["lat"]))[0]			
 				fprops["duration"]=flight[-1]["stamp"]-flight[0]["stamp"]
 				fprops["alt"]=[ a["alt"] for a in flight ]
 				fprops["points"]=[ p for p in flight ]
@@ -308,7 +232,7 @@ if __name__== "__main__" :
 				flightid="%s-%s" % (hcode,flight[0]["stime"].replace(" ",""))
 				flightjson= { "properties" : fprops, "id" : flightid, "type" : "Feature", 
 				               "geometry" : { "type" : "LineString", 
-				               "coordinates" : [ [a["lng"],a["lat"]] for a in flight] }  }
+				               "coordinates" : [ [float(a["lng"]),float(a["lat"])] for a in flight] }  }
 				fs.append(flightjson)
 		simplejson.dump(fs,o)
 		logger.info("%s flights recorded" % len(fs))
