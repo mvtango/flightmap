@@ -15,6 +15,18 @@ import traceback
 import copy 
 import simplejson
 from flightmap.airportlocator import nearest_airport
+import couchdb
+
+
+# Quick fix for your example:
+#import time
+#from email.Utils import parsedate
+#def cache_sort(i):
+#    t = time.mktime(parsedate(i[1][1]['Date']))
+#    return datetime.datetime.fromtimestamp(t)
+# And monkey-patch cache_sort function:
+#couchdb.http.cache_sort = cache_sort
+
 
 _here=os.path.split(__file__)[0]
 locale.setlocale(locale.LC_ALL, "de_DE.utf8")
@@ -42,6 +54,9 @@ parser.add_argument('--basedir', action="store",help="base directory for selecti
 parser.add_argument('--flightgap', action="store",help="start a new flight after N minutes without data", default=30)
 parser.add_argument('--flightfile', action="store",help="output file for flight geoJSON, default: stdout", default=sys.stdout)
 parser.add_argument('--input_delimiter', action="store",help="delimiter character for input file(s), default is '<tab>'",default="\t")
+parser.add_argument('--flightdbserver', action="store",help="output couchdb database server, default: http://localhost:5984/",
+                    default="http://localhost:5984/")
+parser.add_argument('--flightdb', action="store",help="couchdb database name, default: none", default=None)
 
 
 args = vars(parser.parse_args())
@@ -148,7 +163,7 @@ def push_flight(rec,new=False) :
 		point[k]=rec[k]
 	if not key in flights :
 		info={ "flights" : [ [point] ] }
-		for k in ("reg","hex","type") :
+		for k in ("reg","hex","type","flight","radar") :
 			info[k]=rec[k]
 		flights[key]=info
 	else :
@@ -235,4 +250,27 @@ if __name__== "__main__" :
 				               "coordinates" : [ [float(a["lng"]),float(a["lat"])] for a in flight] }  }
 				fs.append(flightjson)
 		simplejson.dump(fs,o)
-		logger.info("%s flights recorded" % len(fs))
+		logger.info("%s flights recorded to %s" % (len(fs),args["flightfile"]))
+		if args["flightdb"] :
+			db=couchdb.Server()[args["flightdb"]]
+			for r in map(lambda a :  { 	"starttime" : a["properties"]["starttime"],
+										"endtime"   : a["properties"]["endtime"],
+										"start"     : a["properties"]["start"]["town"],
+										"end"       : a["properties"]["end"]["town"],
+										"route"     : a["geometry"],
+										"duration"  : a["properties"]["duration"],
+										"reg"		: a["properties"]["reg"],
+										"flight"    : a["properties"]["flight"],
+										"radar"     : a["properties"]["radar"],
+										"hex"       : a["properties"]["hex"],
+										"id"        : a["id"] }, fs) :
+				doc=db.get(r["id"])
+				if doc is None :
+					doc=r
+				else :
+					doc.update(r)
+				try :
+					db[r["id"]]=doc
+				except Exception, e:
+					logger.error("Update %s failed (%s)" % (r["id"],e))
+			logger.info("%s flights saved to db %s" % (len(fs),args["flightdb"]))
