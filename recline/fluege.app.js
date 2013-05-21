@@ -32,12 +32,29 @@ jQuery(function($) {
   }
   var dataset = new recline.Model.Dataset({
     db_url: '/couchdb/flightmap',
-    view_url: '/couchdb/flightmap/_all_docs',
+    view_url: "/couchdb/flightmap/_design/titles/_view/flights",
     backend: 'couchdb',
     query_options: {
       'key': '_id'
     }
   });
+ var dataset = new recline.Model.Dataset({
+    url: 'http://localhost:9200/flight-index/flight',
+    backend: 'elasticsearch',
+    options: {
+      dataType: 'jsonp'
+    },
+    fields: [
+        {id: 'startdatum', type: 'date', label: 'Start'},
+        {id: 'dauer', type: 'string', label: 'Dauer'},
+        {id: 'maschine', type: 'string', label: 'Maschine'},
+		{id: 'start', type: 'string', label: 'Start'},
+		{id: 'landung', type: 'string', label: 'Landung'},
+        {id: 'route', type: 'geojson', label: 'Route'}
+      ]
+  });
+
+  window.dataset=dataset;
   
   createExplorer(dataset, state);
 });
@@ -61,7 +78,16 @@ var createExplorer = function(dataset, state) {
       id: 'grid',
       label: 'Tabelle',
       view: new recline.View.SlickGrid({
-        model: dataset
+        model: dataset,
+		fields: [
+        {id: 'startdatum', type: 'date', label: 'Start'},
+        {id: 'dauer', type: 'string', label: 'Dauer'},
+        {id: 'maschine', type: 'string', label: 'Maschine'},
+		{id: 'start', type: 'string', label: 'Start'},
+		{id: 'landung', type: 'string', label: 'Landung'},
+        {id: 'route', type: 'geojson', label: 'Route'}
+		]
+        
       })
     },
     {

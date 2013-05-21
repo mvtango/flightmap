@@ -57,6 +57,7 @@ parser.add_argument('--input_delimiter', action="store",help="delimiter characte
 parser.add_argument('--flightdbserver', action="store",help="output couchdb database server, default: http://localhost:5984/",
                     default="http://localhost:5984/")
 parser.add_argument('--flightdb', action="store",help="couchdb database name, default: none", default=None)
+parser.add_argument('--flightdocs', action="store",help="json docs file", default=None)
 
 
 args = vars(parser.parse_args())
@@ -251,9 +252,8 @@ if __name__== "__main__" :
 				fs.append(flightjson)
 		simplejson.dump(fs,o)
 		logger.info("%s flights recorded to %s" % (len(fs),args["flightfile"]))
-		if args["flightdb"] :
-			db=couchdb.Server()[args["flightdb"]]
-			for r in map(lambda a :  { 	"starttime" : a["properties"]["starttime"],
+		if args["flightdb"] or args["flightdocs"]:
+			dcs=map(lambda a :  { 	"starttime" : a["properties"]["starttime"],
 										"endtime"   : a["properties"]["endtime"],
 										"start"     : a["properties"]["start"]["town"],
 										"end"       : a["properties"]["end"]["town"],
@@ -263,14 +263,22 @@ if __name__== "__main__" :
 										"flight"    : a["properties"]["flight"],
 										"radar"     : a["properties"]["radar"],
 										"hex"       : a["properties"]["hex"],
-										"id"        : a["id"] }, fs) :
-				doc=db.get(r["id"])
-				if doc is None :
-					doc=r
-				else :
-					doc.update(r)
-				try :
-					db[r["id"]]=doc
-				except Exception, e:
-					logger.error("Update %s failed (%s)" % (r["id"],e))
-			logger.info("%s flights saved to db %s" % (len(fs),args["flightdb"]))
+										"id"        : a["id"] }, fs) 
+			if args["flightdb"] :
+				db=couchdb.Server()[args["flightdb"]]
+				for r in dcs :
+					doc=db.get(r["id"])
+					if doc is None :
+						doc=r
+					else :
+						doc.update(r)
+					try :
+						db[r["id"]]=doc
+					except Exception, e:
+						logger.error("Update %s failed (%s)" % (r["id"],e))
+				logger.info("%s flights saved to db %s" % (len(dcs),args["flightdb"]))
+			elif args["flightdocs"] :
+				simplejson.dump(dcs,open(args["flightdocs"],"w"))
+				logger.info("%s flights saved to to json doc list %s" % (len(dcs),args["flightdocs"]))
+
+				
