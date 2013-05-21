@@ -20,6 +20,14 @@
   <link rel="stylesheet" href="css/facetview.css">
 
   <link rel="stylesheet" href="css/style.css">
+  <style>
+	 span.airport { display: inline-block; height: 16px; ; }
+	 span.start   { background-image: url(img/start-16.png); background-repeat: no-repeat; padding-left: 18px}
+	 span.landing { background-image: url(img/landing-16.png); background-repeat: no-repeat; 
+	                background-position: right; padding-right: 18px }
+
+     span.far { background-image: none; }
+  </style>
 
   <script type="text/javascript">
 jQuery(document).ready(function($) {
@@ -44,10 +52,11 @@ jQuery(document).ready(function($) {
     search_url: 'http://localhost:9200/flights/_search?',
     search_index: 'elasticsearch',
     facets: [ 
-        {'field': 'start.town', 'display': 'start'}, 
-        {'field': 'end.town', 'display': 'landung'}, 
-        {'field': 'reg', 'display': 'kennung'}, 
-        {'field': 'datum', 'display': 'tag'}, 
+        {'field': 'start.town', 'display': 'first'}, 
+        {'field': 'end.town', 'display': 'last'}, 
+        {'field': 'reg', 'display': 'registration'}, 
+        {'field': 'datum', 'display': 'day'}, 
+        {'field': 'duration', 'display': 'duration'}, 
 
     ],
     result_display : [
@@ -63,9 +72,10 @@ jQuery(document).ready(function($) {
 	],
 	result_template: template.resultTemplate,
 	search_sortby: [
-		{"field" : "start.time", "display" : "start" },
-		{"field" : "duration", "display" : "länge" },
-		{"field" : "duration", "display" : "startflughafen" },
+		{"field" : "start.time", "display" : "day" },
+		{"field" : "duration", "display" : "duration" },
+		{"field" : "start.town", "display" : "first" },
+		{"last" : "end.town", "display" : "first" },
 	
 	],
     paging: {
@@ -84,6 +94,8 @@ jQuery(document).ready(function($) {
     });
     $('.facet-view-here').facetview(_data);
   });
+  
+  $( "[title]" ).tooltip({ show: { delay: 4, duration: 100, }});
 });
   </script>
 </head>
@@ -109,7 +121,7 @@ jQuery(document).ready(function($) {
   <div class="content">
     <div class="page-header">
       <h1>
-		Flüge
+		Flights
       </h1>
     </div>
     <div class="facet-view-simple"></div>
@@ -123,7 +135,21 @@ jQuery(document).ready(function($) {
 </div>
 <script id="resultTemplate" type="text/template">
 <tr><td>
-	<%= record.datum %>: <%= record.start.town %> - <%= record.end.down %>
+	<%= record.datum %>
+	</td>
+	<td>
+		 <b><%= record.reg ? record.reg : '-' %> </b>
+    </td>
+    <td>
+	<span title="<%= Math.floor(record.start.dist+0.5) %> km / <%= record.start.alt %> ft" class="airport start <%= ((record.duration<0.3) || (record.start.alt>3000) || (record.start.dist > 9)) ? "far" : "near" %>"> 
+	<%= record.start.town %>
+	</span> - <span  title="<%= Math.floor(record.end.dist+0.5) %> km / <%= record.end.alt %> ft" class="airport landing <%= ((record.duration<0.3) || (record.end.alt>3000) || (record.end.dist > 9)) ? "far" : "near" %>"> 
+	<%= record.end.town %>
+	</span>
+	</td>
+	<td> 
+	<%= record.duration %> h.
+	</td>
 </td></tr>
 
 </div>
