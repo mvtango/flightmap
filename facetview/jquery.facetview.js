@@ -403,6 +403,7 @@ search box - the end user will not know they are happening.
             "enable_rangeselect": false,
             "include_facets_in_querystring": false,
             "result_display": resdisplay,
+            "result_template" : false,
             "display_images": true,
             "search_url":"",
             "datatype":"jsonp",
@@ -768,64 +769,73 @@ search box - the end user will not know they are happening.
         // given a result record, build how it should look on the page
         var buildrecord = function(index) {
             var record = options.data['records'][index];
-            var result = options.resultwrap_start;
-            // add first image where available
-            if (options.display_images) {
-                var recstr = JSON.stringify(record);
-                var regex = /(http:\/\/\S+?\.(jpg|png|gif|jpeg))/;
-                var img = regex.exec(recstr);
-                if (img) {
-                    result += '<img class="thumbnail" style="float:left; width:100px; margin:0 5px 10px 0; max-height:150px;" src="' + img[0] + '" />';
-                }
-            }
-            // add the record based on display template if available
-            var display = options.result_display;
-            var lines = '';
-            for ( var lineitem = 0; lineitem < display.length; lineitem++ ) {
-                line = "";
-                for ( var object = 0; object < display[lineitem].length; object++ ) {
-                    var thekey = display[lineitem][object]['field'];
-                    parts = thekey.split('.');
-                    // TODO: this should perhaps recurse..
-                    if (parts.length == 1) {
-                        var res = record;
-                    } else if (parts.length == 2) {
-                        var res = record[parts[0]];
-                    } else if (parts.length == 3) {
-                        var res = record[parts[0]][parts[1]];
-                    }
-                    var counter = parts.length - 1;
-                    if (res && res.constructor.toString().indexOf("Array") == -1) {
-                        var thevalue = res[parts[counter]];  // if this is a dict
-                    } else {
-                        var thevalue = [];
-                        if ( res !== undefined ) {
-                            for ( var row = 0; row < res.length; row++ ) {
-                                thevalue.push(res[row][parts[counter]]);
-                            }
-                        }
-                    }
-                    if (thevalue && thevalue.toString().length) {
-                        display[lineitem][object]['pre']
-                            ? line += display[lineitem][object]['pre'] : false;
-                        if ( typeof(thevalue) == 'object' ) {
-                            for ( var val = 0; val < thevalue.length; val++ ) {
-                                val != 0 ? line += ', ' : false;
-                                line += thevalue[val];
-                            }
-                        } else {
-                            line += thevalue;
-                        }
-                        display[lineitem][object]['post'] 
-                            ? line += display[lineitem][object]['post'] : line += ' ';
-                    }
-                }
-                if (line) {
-                    lines += line.replace(/^\s/,'').replace(/\s$/,'').replace(/\,$/,'') + "<br />";
-                }
-            }
-            lines ? result += lines : result += JSON.stringify(record,"","    ");
-            result += options.resultwrap_end;
+            var result;
+            if (options.result_template) {
+				try {
+					result = options.result_template({ "record" : record} );
+				} catch(e) {
+					result ="<tr><td><b>Template Error</b>"+e+"<br/>"+JSON.stringify(record,"","    ")+"</td></tr>";
+				}
+			} else {
+				var result = options.resultwrap_start;
+				// add first image where available
+				if (options.display_images) {
+					var recstr = JSON.stringify(record);
+					var regex = /(http:\/\/\S+?\.(jpg|png|gif|jpeg))/;
+					var img = regex.exec(recstr);
+					if (img) {
+						result += '<img class="thumbnail" style="float:left; width:100px; margin:0 5px 10px 0; max-height:150px;" src="' + img[0] + '" />';
+					}
+				}
+				// add the record based on display template if available
+				var display = options.result_display;
+				var lines = '';
+				for ( var lineitem = 0; lineitem < display.length; lineitem++ ) {
+					line = "";
+					for ( var object = 0; object < display[lineitem].length; object++ ) {
+						var thekey = display[lineitem][object]['field'];
+						parts = thekey.split('.');
+						// TODO: this should perhaps recurse..
+						if (parts.length == 1) {
+							var res = record;
+						} else if (parts.length == 2) {
+							var res = record[parts[0]];
+						} else if (parts.length == 3) {
+							var res = record[parts[0]][parts[1]];
+						}
+						var counter = parts.length - 1;
+						if (res && res.constructor.toString().indexOf("Array") == -1) {
+							var thevalue = res[parts[counter]];  // if this is a dict
+						} else {
+							var thevalue = [];
+							if ( res !== undefined ) {
+								for ( var row = 0; row < res.length; row++ ) {
+									thevalue.push(res[row][parts[counter]]);
+								}
+							}
+						}
+						if (thevalue && thevalue.toString().length) {
+							display[lineitem][object]['pre']
+								? line += display[lineitem][object]['pre'] : false;
+							if ( typeof(thevalue) == 'object' ) {
+								for ( var val = 0; val < thevalue.length; val++ ) {
+									val != 0 ? line += ', ' : false;
+									line += thevalue[val];
+								}
+							} else {
+								line += thevalue;
+							}
+							display[lineitem][object]['post'] 
+								? line += display[lineitem][object]['post'] : line += ' ';
+						}
+					}
+					if (line) {
+						lines += line.replace(/^\s/,'').replace(/\s$/,'').replace(/\,$/,'') + "<br />";
+					}
+				}
+				lines ? result += lines : result += JSON.stringify(record,"","    ");
+				result += options.resultwrap_end;
+			}
             return result;
         };
 

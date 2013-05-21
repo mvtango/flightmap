@@ -15,6 +15,7 @@
   <script type="text/javascript" src="vendor/jquery-ui-1.8.18.custom/jquery-ui-1.8.18.custom.min.js"></script>
 
   <script type="text/javascript" src="jquery.facetview.js"></script>
+  <script type="text/javascript" src="vendor/underscore/underscore.min.js"></script>
 
   <link rel="stylesheet" href="css/facetview.css">
 
@@ -22,30 +23,49 @@
 
   <script type="text/javascript">
 jQuery(document).ready(function($) {
+	
+  var template={};
+  $("script").each(function(i,e) {
+	var $e=$(e);
+	if ($e.attr("type")=="text/template") {
+		try {
+			template[$e.attr("id")]=_.template($e.html());
+			// console.log("Bingo "+$e.html());
+		} catch(err) {
+				console.error("Template error '"+err+"'"+$e.attr("id")+ " "+$e.html())
+		}
+	}	
+  });
+  window.template=template; 
+	
+	
+	
   $('.facet-view-simple').facetview({
-    search_url: 'http://localhost:9200/flight-index/_search?',
+    search_url: 'http://localhost:9200/flights/_search?',
     search_index: 'elasticsearch',
     facets: [ 
-        {'field': 'start', 'display': 'start'}, 
-        {'field': 'end', 'display': 'ende'}, 
-        {'field': 'reg', 'display': 'register'}, 
-        {'field': 'datum', 'display': 'datum'}, 
+        {'field': 'start.town', 'display': 'start'}, 
+        {'field': 'end.town', 'display': 'landung'}, 
+        {'field': 'reg', 'display': 'kennung'}, 
+        {'field': 'datum', 'display': 'tag'}, 
 
     ],
     result_display : [
 		[
 		{"field" : "datum", "pre" : "<u>","post" : "</u> "},
 		{"field" : "reg", "pre" : "<b>","post" : "</b> "},
-		{"field" : "start", "post" : " - "},
-		{"field" : "end" },
-        {"field" : "duration", "post" : "s.", "pre" : " in "},
+		{"field" : "start.town", "post" : " - "},
+		{"field" : "end.town" },
+        {"field" : "duration", "post" : "h.", "pre" : " in "},
 
 		],
     
 	],
+	result_template: template.resultTemplate,
 	search_sortby: [
-		{"field" : "starttime", "display" : "starttime" },
+		{"field" : "start.time", "display" : "start" },
 		{"field" : "duration", "display" : "länge" },
+		{"field" : "duration", "display" : "startflughafen" },
 	
 	],
     paging: {
@@ -98,8 +118,16 @@ jQuery(document).ready(function($) {
   </div>
 
   <footer>
-   <p>Erstellt mit <a href="https://github.com/okfn/facetview">facetview</a> und <a href="http://www.elasticsearch.org/‎">elasticsearch</a>.</p>
+   <p>Made with <a href="https://github.com/okfn/facetview">facetview</a> and <a href="http://www.elasticsearch.org/‎">elasticsearch</a>.</p>
   </footer>
 </div>
+<script id="resultTemplate" type="text/template">
+<tr><td>
+	<%= record.datum %>: <%= record.start.town %> - <%= record.end.down %>
+</td></tr>
+
+</div>
+</script>   
+
 </body>
 </html>

@@ -253,16 +253,25 @@ if __name__== "__main__" :
 		simplejson.dump(fs,o)
 		logger.info("%s flights recorded to %s" % (len(fs),args["flightfile"]))
 		if args["flightdb"] or args["flightdocs"]:
-			dcs=map(lambda a :  { 	"starttime" : a["properties"]["starttime"],
-										"endtime"   : a["properties"]["endtime"],
-										"start"     : a["properties"]["start"]["town"],
-										"end"       : a["properties"]["end"]["town"],
+			dcs=map(lambda a :  { 		"start"     : { "time" : a["properties"]["starttime"].replace(" ","T"),
+														"alt"  : a["properties"]["points"][0]["alt"],
+														"town" : a["properties"]["start"]["town"],
+														"dist" : a["properties"]["start"]["distance"],
+														"speed": a["properties"]["points"][0]["speed"]
+													 },
+										"end"     : {   "time" : a["properties"]["endtime"].replace(" ","T"),
+														"alt"  : a["properties"]["points"][-1]["alt"],
+														"town" : a["properties"]["end"]["town"],
+														"dist" : a["properties"]["end"]["distance"]	,
+														"speed": a["properties"]["points"][-1]["speed"]
+													 },
 										"route"     : a["geometry"],
-										"duration"  : a["properties"]["duration"],
+										"duration"  : float("%.2f" % (float(a["properties"]["duration"])/3600),),
 										"reg"		: a["properties"]["reg"],
 										"flight"    : a["properties"]["flight"],
 										"radar"     : a["properties"]["radar"],
 										"hex"       : a["properties"]["hex"],
+										"datum"     : a["properties"]["starttime"][:10],
 										"id"        : a["id"] }, fs) 
 			if args["flightdb"] :
 				db=couchdb.Server()[args["flightdb"]]
