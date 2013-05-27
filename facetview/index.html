@@ -138,12 +138,12 @@ jQuery(document).ready(function($) {
 	<%= record.datum %>
 	</td>
 	<td>
-		 <b><%= record.reg ? record.reg : '-' %> </b>
+		 <b title="<%= record.flight %> / <%= record.radar %> / <%= record.hex %>"><%= record.reg ? record.reg : '-' %> </b>
     </td>
     <td>
-	<span title="<%= Math.floor(record.start.dist+0.5) %> km / <%= record.start.alt %> ft" class="airport start <%= ((record.duration<0.3) || (record.start.alt>3000) || (record.start.dist > 9)) ? "far" : "near" %>"> 
+	<span title="<%= record.start.speed %> mph / <%= Math.floor(record.start.dist+0.5) %> km / <%= record.start.alt %> ft" class="airport start <%= ((record.duration<0.3) || (record.start.alt>3000) || (record.start.dist > 9)) ? "far" : "near" %>"> 
 	<%= record.start.town %>
-	</span> - <span  title="<%= Math.floor(record.end.dist+0.5) %> km / <%= record.end.alt %> ft" class="airport landing <%= ((record.duration<0.3) || (record.end.alt>3000) || (record.end.dist > 9)) ? "far" : "near" %>"> 
+	</span> - <span  title="<%= record.end.speed %> mph / <%= Math.floor(record.end.dist+0.5) %> km / <%= record.end.alt %> ft" class="airport landing <%= ((record.duration<0.3) || (record.end.alt>3000) || (record.end.dist > 9)) ? "far" : "near" %>"> 
 	<%= record.end.town %>
 	</span>
 	</td>
