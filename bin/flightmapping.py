@@ -18,7 +18,7 @@ s.put_mapping("flights",  "flight", { "flight" : {
 							    "properties" : {
 									"town" : { "type" : "string", "analyzer" : "keyword" },
 									"dist" : { "type" : "float" },
-									"alt"  : { "type" : "integer"},
+												"alt"  : { "type" : "integer"},
 									"time" : { "type" : "date" },
 									"speed": { "type" : "integer" },
 							  }
