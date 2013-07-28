@@ -36,7 +36,8 @@ logger=logging.getLogger(__name__)
 
 bases={"filtered" : "raw/217.11.52.54/fly/filtered",
        "full"     : "raw/217.11.52.54/fly/dumps" ,
-       "local"    : "/home/martin/projekte/flightmap/data/tsv"}
+       "local"    : "/home/martin/projekte/flightmap/data/tsv",
+       "dazem"    : "/home/martin/projekte/flightmap/data/dazem"}
 
 
 
@@ -70,11 +71,11 @@ output_base="raw/extracted"
 # fieldnames=["time","flight","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp"]
 
 def map_rec(rec,where="") :
-	for ic in ("head","alt","speed","stamp","squawk") :
+	for ic in ("head","alt","speed","stamp") :
 		try :
 			rec[ic]=int(rec[ic])
 		except ValueError :
-			logger.error("invalid %s=%s in %s (%s)" (ic,rec[ic],repr(rec),where))
+			logger.error("invalid %s=%s in %s (%s)" % (ic,rec[ic],pprint.pformat(rec),where))
 		
 	for ic in ("lat","lng") :
 		try :
@@ -240,7 +241,9 @@ if __name__== "__main__" :
 				fprops["starttime"]=flight[0]["stime"]
 				fprops["endtime"]=flight[-1]["stime"]
 				fprops["start"]=nearest_airport(float(flight[0]["lng"]),float(flight[0]["lat"]))[0]
+				fprops["start"]["point"]=flight[0]
 				fprops["end"]=nearest_airport(float(flight[-1]["lng"]),float(flight[-1]["lat"]))[0]			
+				fprops["end"]["point"]=flight[-1]
 				fprops["duration"]=flight[-1]["stamp"]-flight[0]["stamp"]
 				fprops["alt"]=[ a["alt"] for a in flight ]
 				fprops["points"]=[ p for p in flight ]

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>D-AZEM Flüge</title>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' />
+  <script src='//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js'></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+  <link rel="stylesheet" href="js/jquery-ui-1.10.3/themes/base/jquery.ui.all.css">
+  <script src="js/jquery-ui-1.10.3/ui/jquery.ui.core.js"></script>
+  <script src="js/jquery-ui-1.10.3/ui/jquery.ui.widget.js"></script>
+  <script src="js/jquery-ui-1.10.3/ui/jquery.ui.position.js"></script>
+  <script src="js/jquery-ui-1.10.3/ui/jquery.ui.tooltip.js"></script>
+	
+  <script src='//api.tiles.mapbox.com/mapbox.js/v1.3.1/mapbox.js'></script>
+  <link href='//api.tiles.mapbox.com/mapbox.js/v1.3.1/mapbox.css' rel='stylesheet' />
+  <!--[if lte IE 8]>
+    <link href='//api.tiles.mapbox.com/mapbox.js/v1.3.1/mapbox.ie.css' rel='stylesheet' >
+  <![endif]-->
+  <style>
+	* { font-family: Tahoma, Sans, Arial, Helvetica; }
+    body { margin:0; padding:0; }
+    #map { width:1000px; height: 800px; float: left;}
+    span.over { color: #808080; }
+    .ui-tooltip { background: #000; color: #F0F000; padding: 4px; font-weight: bold; font-size: 60%;}
+    #flights { float: left; overflow-x: hidden; overflow-y: scroll; width: 240px; height: 800px;}
+    #flights ul { width: 200px; font-size: 60%; list-style: none }
+	#flights ul li { cursor: pointer; margin-left: -30px; margin-right: 10px; }
+	
+  </style>
+</head>
+<body>
+	<div style="width: 800px; float: left; font-size: 60%; padding: 20px">
+		<p ><i>Klicken Sie auf eine Route, um Flugdaten anzuzeigen!</i></p>
+		<p >Datenbasis: <span id="datenbasis"><i>Bitte warten, Daten werden geladen</i></span></p>
+	
+
+		<p >Sofern die Maschine sich bei Beginn oder Ende der Aufzeichnung schneller als 100kn bewegt, wird der nächste offiziell bekannte Flughafen genannt.</p>
+	</div>
+	<br clear="all">
+	<div id="flights" style="display:block" >
+		<i>Daten werden geladen ...</i> 
+	</div>
+<div id='map'></div>
+<script type='text/javascript'>
+
+$(document).ready(function() {
+	
+        
+  var template={};
+  $("script").each(function(i,e) {
+        var $e=$(e);
+        if ($e.attr("type")=="text/template") {
+                try {
+                        template[$e.attr("id")]=_.template($e.html());
+                        // console.log("Bingo "+$e.html());
+                } catch(err) {
+                           console.error("Template error '"+err+"'"+$e.attr("id")+ " "+$e.html())
+                }
+        }       
+  });
+  window.template=template; 
+})
+  	
+
+  window.styles={
+	    flightIdle : { weight: 1, color: "#6060A0" },
+	    flightHighlight : { weight: 5, color: "#990000" }, 
+	    itemIdle : { backgroundColor : "#ffffff" },
+		itemHighlight : { backgroundColor: "#ffff00" }
+	  }
+	
+	
+function props(a) {
+	var e="";
+	for (var p in a) {
+		e=e+" "+p;
+	}
+	return e;
+}	
+
+function duration_format(a) {
+	var s=a % 60;
+	var m=Math.floor(a / 60);
+	if (m>60) {
+		h=Math.floor(m / 60)+".";
+		m=a % 60;
+	} else {
+		h="";
+	}
+	return h+m+"'"+s+'&quot;';
+}
+
+function likely_touchdown(p) {
+	if (p.speed<100) {
+		if (p.alt<1000) {
+		return true;
+	   }
+	} 
+	return false;
+}
+
+	
+var lastClicked=null;
+
+var map = L.mapbox.map('map', 'mvtango.map-94e5xnqh')
+    .setView([50, 15], 7);
+
+var markerLayer = L.mapbox.markerLayer()
+    .loadURL('2013-07-26-dazem.json')
+    .on('ready',function() {
+		var l=this.getLayers();
+		var ss=[];
+		_(l).each(function (e) {
+			ss.push(e.feature.properties.points[0].stime.substr(0,11))
+		});
+		ss.sort()
+		var c=ss.length+" Flüge vom "+ss[0]+" bis zum "+ss[ss.length-1];
+		$("#datenbasis").html(c);
+		c="";
+		var markerLayer=this;
+		this.eachLayer(function(layer) {
+			var p=layer.feature.properties;
+			p.start.touchdown=likely_touchdown(p.start.point);
+			p.end.touchdown=likely_touchdown(p.end.point);
+			layer.bindPopup(template.popupTemplate({ flight : p }));
+			c=c+template.flightTemplate({ flight : p, id: markerLayer.getLayerId(layer) });
+			layer.setStyle(window.styles.flightIdle);
+			layer.on("click",function() {
+				this.setStyle(window.styles.flightHighlight);
+				if (lastClicked) {
+					lastClicked.setStyle(window.styles.flightIdle);
+				}
+				lastClicked=this;
+			})
+		});
+		$("#flights").html("<ul>"+c+"</ul>");
+	 })
+    .addTo(map);
+    $(document).tooltip();
+    
+    function showFeature(a,e) {
+		$("#flights li").css(styles.itemIdle);
+		$(e).css(styles.itemHighlight);
+		window.g=$(e);
+		if (lastClicked) {
+					lastClicked.setStyle(window.styles.flightIdle);
+			}
+		var f=markerLayer.getLayer(a);
+		f.openPopup();
+		f.setStyle(window.styles.flightHighlight);
+		lastClicked=f;
+	}
+	
+</script>
+<script type="text/template" id="popupTemplate">
+<div>
+ <div style="border-bottom: 1px solid #808080"><b><%= flight.start.point.stime.substr(0,16) %></b> <%= duration_format(flight.duration) %></div>
+ <span title="<%= Math.floor(flight.start.distance+0.5) %>km entfernt, <%= flight.start.point.speed %>kn schnell, <%= flight.start.point.alt %> ft hoch" class="start point <%= flight.start.touchdown  ? "down" : "over" %>"><%= flight.start.airport ? flight.start.airport +", " : "" %><%= flight.start.town %> (<%= flight.start.country %>)</span>
+ <br />
+ <span title="<%= Math.floor(flight.end.distance+0.5) %>km entfernt, <%= flight.end.point.speed %>kn schnell, <%= flight.end.point.alt %> ft hoch" class="end point <%= flight.end.touchdown  ? "down" : "over" %>"><%= flight.end.airport ? flight.end.airport +", " : "" %><%= flight.end.town %> (<%= flight.end.country %>)</span>
+</div>
+</script>
+<script type="text/template" id="flightTemplate">
+ <li onClick="showFeature(<%= id %>,this)" title="<%= duration_format(flight.duration) %> von <%= flight.start.airport ? flight.start.airport +", " : "" %><%= flight.start.town %> (<%= flight.start.country %>) nach <%= flight.end.airport ? flight.end.airport +", " : "" %><%= flight.end.town %> (<%= flight.end.country %>) "><b><%= flight.start.point.stime.substr(0,11) %></b>  <%= flight.start.town %> - <%= flight.end.town %> </li>
+</script>
+
+</body>
+</html>
