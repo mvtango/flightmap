@@ -11,7 +11,7 @@
   <script src="js/jquery-ui-1.10.3/ui/jquery.ui.widget.js"></script>
   <script src="js/jquery-ui-1.10.3/ui/jquery.ui.position.js"></script>
   <script src="js/jquery-ui-1.10.3/ui/jquery.ui.tooltip.js"></script>
-	
+  <script src="js/jquery.scrollintoview.min.js"></script>	
   <script src='//api.tiles.mapbox.com/mapbox.js/v1.3.1/mapbox.js'></script>
   <link href='//api.tiles.mapbox.com/mapbox.js/v1.3.1/mapbox.css' rel='stylesheet' />
   <!--[if lte IE 8]>
@@ -36,6 +36,11 @@
 	
 
 		<p >Sofern die Maschine sich bei Beginn oder Ende der Aufzeichnung schneller als 100kn bewegt, wird der nächste offiziell bekannte Flughafen genannt.</p>
+		<input type="button" onClick="prev_flight()" value="&lt; Vorheriger" />
+	    <input type="button" onClick="next_flight()" value="Nächster &gt;" />
+	    <input type="checkbox" onClick="auto_play(this)"> Autoplay
+
+
 	</div>
 	<br clear="all">
 	<div id="flights" style="display:block" >
@@ -112,10 +117,10 @@ var markerLayer = L.mapbox.markerLayer()
 		var l=this.getLayers();
 		var ss=[];
 		_(l).each(function (e) {
-			ss.push(e.feature.properties.points[0].stime.substr(0,11))
+			ss.push(e.feature.properties.points[0].stime)
 		});
 		ss.sort()
-		var c=ss.length+" Flüge vom "+ss[0]+" bis zum "+ss[ss.length-1];
+		var c=ss.length+" Flüge vom "+ss[0].substr(0,11)+" bis zum "+ss[ss.length-1].substr(0,11);
 		$("#datenbasis").html(c);
 		c="";
 		var markerLayer=this;
@@ -123,6 +128,7 @@ var markerLayer = L.mapbox.markerLayer()
 			var p=layer.feature.properties;
 			p.start.touchdown=likely_touchdown(p.start.point);
 			p.end.touchdown=likely_touchdown(p.end.point);
+			p.id=markerLayer.getLayerId(layer) ;
 			layer.bindPopup(template.popupTemplate({ flight : p }));
 			c=c+template.flightTemplate({ flight : p, id: markerLayer.getLayerId(layer) });
 			layer.setStyle(window.styles.flightIdle);
@@ -132,6 +138,18 @@ var markerLayer = L.mapbox.markerLayer()
 					lastClicked.setStyle(window.styles.flightIdle);
 				}
 				lastClicked=this;
+				var thisid='('+this._leaflet_id+',';
+				$("li").each(function(i,e) {
+					var $e=$(e);
+					if ($e.attr("onClick").indexOf(thisid)>0) {
+						$e.css(window.styles.itemHighlight);
+						$e.addClass("highlight").scrollintoview();
+					} else {
+						$e.css(window.styles.itemIdle);
+						$e.removeClass("highlight");
+					}
+				});
+				
 			})
 		});
 		$("#flights").html("<ul>"+c+"</ul>");
@@ -140,8 +158,9 @@ var markerLayer = L.mapbox.markerLayer()
     $(document).tooltip();
     
     function showFeature(a,e) {
-		$("#flights li").css(styles.itemIdle);
-		$(e).css(styles.itemHighlight);
+		$("#flights li").css(styles.itemIdle).removeClass("highlight");
+		$(e).css(styles.itemHighlight).addClass("highlight").scrollintoview();
+		
 		window.g=$(e);
 		if (lastClicked) {
 					lastClicked.setStyle(window.styles.flightIdle);
@@ -152,6 +171,33 @@ var markerLayer = L.mapbox.markerLayer()
 		lastClicked=f;
 	}
 	
+	function next_flight() {
+		var n=$("#flights ul li.highlight+li").trigger("click");
+		if (n.length==0) {
+			$("#flights ul li:first-child").trigger("click");
+		}
+	}
+		
+	function prev_flight() {
+		var n=$("#flights ul li.highlight").prev().trigger("click");
+		if (n.length==0) {
+			$("#flights ul li:last-child").trigger("click");
+		}
+	}
+	
+	function auto_play(elem) {
+		var $e=$(elem);
+		next_flight();
+		if ($e.is(":checked")) {
+			window.autoplay=window.setInterval(function() {
+				next_flight();
+			},2000);
+		} else {
+			window.clearInterval(window.autoplay);
+		}
+	}
+	
+
 </script>
 <script type="text/template" id="popupTemplate">
 <div>
