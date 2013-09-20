@@ -2,5 +2,5 @@
 
 FILE="data/openflights.airports.csv"
 cp $FILE-header.csv $FILE
-wget --output-document=- http://openflights.svn.sourceforge.net/viewvc/openflights/openflights/data/airports.dat >>$FILE
+wget --output-document=- "http://sourceforge.net/p/openflights/code/HEAD/tree/openflights/data/airports.dat?format=raw" >>$FILE
 

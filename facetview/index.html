@@ -46,10 +46,18 @@ jQuery(document).ready(function($) {
   });
   window.template=template; 
 	
+
+  function search_server() {
+	  if (document.location.href.indexOf("newsradar.org")>0) {
+		  return "http://search.newsradar.org/flights/_search?";
+	  } else {
+		  return 'http://localhost:9200/flights/_search?';
+	  }
+  }
 	
 	
   $('.facet-view-simple').facetview({
-    search_url: 'http://localhost:9200/flights/_search?',
+    search_url: search_server(),
     search_index: 'elasticsearch',
     facets: [ 
         {'field': 'start.town', 'display': 'first'}, 

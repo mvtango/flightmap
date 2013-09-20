@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! python
 # coding: utf-8
 #
 import argparse
@@ -37,7 +37,8 @@ logger=logging.getLogger(__name__)
 bases={"filtered" : "raw/217.11.52.54/fly/filtered",
        "full"     : "raw/217.11.52.54/fly/dumps" ,
        "local"    : "/home/martin/projekte/flightmap/data/tsv",
-       "dazem"    : "/home/martin/projekte/flightmap/data/dazem"}
+       "dazem"    : "/home/martin/projekte/flightmap/data/dazem",
+       "server"   : "/home/michael/flightradar_scraper/dumps-jsonp-filtered/" }
 
 
 
@@ -254,27 +255,27 @@ if __name__== "__main__" :
 				fprops["end"]["point"]=flight[-1]
 				fprops["duration"]=flight[-1]["stamp"]-flight[0]["stamp"]
 				fprops["alt"]=[ a["alt"] for a in flight ]
-				# fprops["points"]=[ p for p in flight ]
+				fprops["points"]=[ p for p in flight ]
 
 				flightid="%s-%s" % (hcode,flight[0]["stime"].replace(" ",""))
 				flightjson= { "properties" : fprops, "id" : flightid, "type" : "Feature", 
 				               "geometry" : { "type" : "LineString", 
 				               "coordinates" : [ [float(a["lng"]),float(a["lat"])] for a in flight] }  }
 				fs.append(flightjson)
-		simplejson.dump(fs,o)
+		# simplejson.dump(fs,o)
 		logger.info("%s flights recorded to %s" % (len(fs),args["flightfile"]))
 		if args["flightdb"] or args["flightdocs"]:
 			dcs=map(lambda a :  { 		"start"     : { "time" : a["properties"]["starttime"].replace(" ","T"),
-														"alt"  : a["properties"]["points"][0]["alt"],
+														"alt"  : a["properties"].get("points",[{ 'alt' : None }])[0]["alt"],
 														"town" : a["properties"]["start"]["town"],
 														"dist" : a["properties"]["start"]["distance"],
-														"speed": a["properties"]["points"][0]["speed"]
+														"speed": a["properties"].get("points",[{ 'speed' : None }])[0]["speed"]
 													 },
 										"end"     : {   "time" : a["properties"]["endtime"].replace(" ","T"),
-														"alt"  : a["properties"]["points"][-1]["alt"],
+														"alt"  : a["properties"].get("points",[{ 'alt' : None }])[0]["alt"],
 														"town" : a["properties"]["end"]["town"],
 														"dist" : a["properties"]["end"]["distance"]	,
-														"speed": a["properties"]["points"][-1]["speed"]
+														"speed": a["properties"].get("points",[{ 'speed' : None }])[-1]["speed"]
 													 },
 										"route"     : a["geometry"],
 										"duration"  : float("%.2f" % (float(a["properties"]["duration"])/3600),),
@@ -283,7 +284,7 @@ if __name__== "__main__" :
 										"radar"     : a["properties"]["radar"],
 										"hex"       : a["properties"]["hex"],
 										"datum"     : a["properties"]["starttime"][:10],
-										"id"        : a["id"] }, fs) 
+										"id"        : a["id"] }, fs) # filter(lambda a: a["properties"].get("points",False),fs))
 			if args["flightdb"] :
 				db=couchdb.Server()[args["flightdb"]]
 				for r in dcs :
