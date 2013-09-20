@@ -41,9 +41,9 @@ bases={"filtered" : "raw/217.11.52.54/fly/filtered",
 
 
 
-fieldnames=["time","flight","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp"]
-
-
+fieldnames={ 'old' : ["time","flight","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp"],
+             'new' : ["time","unkonwn","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp"]
+		   }
 
 parser = argparse.ArgumentParser(description="fd24 extractor", conflict_handler='resolve')
 parser.add_argument('infiles',nargs="*")
@@ -59,7 +59,7 @@ parser.add_argument('--flightdbserver', action="store",help="output couchdb data
                     default="http://localhost:5984/")
 parser.add_argument('--flightdb', action="store",help="couchdb database name, default: none", default=None)
 parser.add_argument('--flightdocs', action="store",help="json docs file", default=None)
-
+parser.add_argument('--fieldnames', action="store",help="fieldname sequence, options: %s" % ",".join(fieldnames.keys()), default="old")
 
 args = vars(parser.parse_args())
 
@@ -71,21 +71,28 @@ output_base="raw/extracted"
 # fieldnames=["time","flight","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp"]
 
 def map_rec(rec,where="") :
+	errors=[]
 	for ic in ("head","alt","speed","stamp") :
 		try :
 			rec[ic]=int(rec[ic])
-		except ValueError :
-			logger.error("invalid %s=%s in %s (%s)" % (ic,rec[ic],pprint.pformat(rec),where))
-		
+		except ValueError,e  :
+			errors.append("invalid integer %s=%s [%s]" % (ic,rec[ic],e))
+		except KeyError :
+			errors.append("no '%s'" % (ic,))
 	for ic in ("lat","lng") :
 		try :
 			# if rec[ic].find(".") == -1 :
 			#	raise(ValueError,"no . in float")
 			rec[ic]=float(rec[ic])
 		except ValueError,e :
-			logger.error("%s : %s, %s" % (e,ic,repr(rec)))
+			errors.append("%s : %s, %s" % (e,ic,rec[ic]))
 			#logger.error("%s %s=%s in %s (%s)" (e,ic,rec[ic],repr(rec),where))
+		except KeyError :
+			errors.append("no '%s'" % (ic,))
+
 	rec["stime"]=datetime.datetime.fromtimestamp(rec["stamp"]).strftime('%Y-%m-%d %H:%M:%S')
+	if errors :
+		logger.error("%s errors: %s in %s" % (len(errors),",".join(errors),repr(rec)))
 	return rec
 
 
@@ -102,7 +109,8 @@ def seek_time(pot) :
 	f=[a for a in args["infiles"] if filesearch.search(a)] 
 	if f :
 		tf=f_open(f[0])
-		records=csv.DictReader(tf, fieldnames=fieldnames, delimiter=args["input_delimiter"])
+		print "FN: %s" % (fieldnames[args["fieldnames"]])
+		records=csv.DictReader(tf, fieldnames=fieldnames[args["fieldnames"]], delimiter=args["input_delimiter"])
 		for rec in records :
 			if rec["time"]>minstamp :
 				return records
@@ -161,11 +169,11 @@ def push_flight(rec,new=False) :
 	key=rec["hex"]
 	sec=int(args["flightgap"])*60
 	point={}
-	for k in ("lat","lng","alt","head","speed","stamp","stime","flight","squawk","radar") :
+	for k in ("lat","lng","alt","head","speed","stamp","stime","reg","squawk","radar") :
 		point[k]=rec[k]
 	if not key in flights :
 		info={ "flights" : [ [point] ] }
-		for k in ("reg","hex","type","flight","radar") :
+		for k in ("reg","hex","type","reg","radar") :
 			info[k]=rec[k]
 		flights[key]=info
 	else :
@@ -206,7 +214,7 @@ if __name__== "__main__" :
 		logger.debug("Opening %s for input " % fn)
 		inp=f_open(fn)
 		recc=0
-		records=csv.DictReader(inp, fieldnames=fieldnames, delimiter=args["input_delimiter"])
+		records=csv.DictReader(inp, fieldnames=fieldnames[args["fieldnames"]], delimiter=args["input_delimiter"])
 		testfunc=test_threshold
 		for rec in records :
 			try :
@@ -246,7 +254,7 @@ if __name__== "__main__" :
 				fprops["end"]["point"]=flight[-1]
 				fprops["duration"]=flight[-1]["stamp"]-flight[0]["stamp"]
 				fprops["alt"]=[ a["alt"] for a in flight ]
-				fprops["points"]=[ p for p in flight ]
+				# fprops["points"]=[ p for p in flight ]
 
 				flightid="%s-%s" % (hcode,flight[0]["stime"].replace(" ",""))
 				flightjson= { "properties" : fprops, "id" : flightid, "type" : "Feature", 
@@ -271,7 +279,7 @@ if __name__== "__main__" :
 										"route"     : a["geometry"],
 										"duration"  : float("%.2f" % (float(a["properties"]["duration"])/3600),),
 										"reg"		: a["properties"]["reg"],
-										"flight"    : a["properties"]["flight"],
+										"flight"    : a["properties"]["reg"],
 										"radar"     : a["properties"]["radar"],
 										"hex"       : a["properties"]["hex"],
 										"datum"     : a["properties"]["starttime"][:10],

@@ -25,7 +25,8 @@
     .ui-tooltip { background: #000; color: #F0F000; padding: 4px; font-weight: bold; font-size: 60%;}
     #flights { float: left; overflow-x: hidden; overflow-y: scroll; width: 240px; height: 800px;}
     #flights ul { width: 200px; font-size: 60%; list-style: none }
-	#flights ul li { cursor: pointer; margin-left: -30px; margin-right: 10px; }
+	#flights ul li { display: block; cursor: pointer; margin-left: -30px; margin-right: 10px; }
+	#flights ul li filtered { display: none; }
 	
   </style>
 </head>
@@ -35,11 +36,13 @@
 		<p >Datenbasis: <span id="datenbasis"><i>Bitte warten, Daten werden geladen</i></span></p>
 	
 
-		<p >Sofern die Maschine sich bei Beginn oder Ende der Aufzeichnung schneller als 100kn bewegt, wird der nächste offiziell bekannte Flughafen genannt.</p>
+		<p >Sofern die Maschine sich bei Beginn oder Ende der Aufzeichnung schneller als 100kn bewegt, wird der nächste offiziell bekannte Flughafen aufgelistet.</p>
 		<input type="button" onClick="prev_flight()" value="&lt; Vorheriger" />
 	    <input type="button" onClick="next_flight()" value="Nächster &gt;" />
 	    <input type="checkbox" onClick="auto_play(this)"> Autoplay
-
+	    <!-- <br />
+	    <input type="text" onChange="console.log($(this).val())" />
+        -->
 
 	</div>
 	<br clear="all">
@@ -69,8 +72,9 @@ $(document).ready(function() {
   	
 
   window.styles={
-	    flightIdle : { weight: 1, color: "#6060A0" },
-	    flightHighlight : { weight: 5, color: "#990000" }, 
+	    flightIdle : { weight: 1, color: "#6060A0", opacity: .5  },
+	    flightHighlight : { weight: 5, color: "#990000", opacity: .5 }, 
+	    flightFiltered : { opacity: 0 },
 	    itemIdle : { backgroundColor : "#ffffff" },
 		itemHighlight : { backgroundColor: "#ffff00" }
 	  }
@@ -117,7 +121,7 @@ var markerLayer = L.mapbox.markerLayer()
 		var l=this.getLayers();
 		var ss=[];
 		_(l).each(function (e) {
-			ss.push(e.feature.properties.points[0].stime)
+			ss.push(e.feature.properties.start.point.stime)
 		});
 		ss.sort()
 		var c=ss.length+" Flüge vom "+ss[0].substr(0,11)+" bis zum "+ss[ss.length-1].substr(0,11);
@@ -138,10 +142,10 @@ var markerLayer = L.mapbox.markerLayer()
 					lastClicked.setStyle(window.styles.flightIdle);
 				}
 				lastClicked=this;
-				var thisid='('+this._leaflet_id+',';
+				var thisid=+this._leaflet_id+'';
 				$("li").each(function(i,e) {
 					var $e=$(e);
-					if ($e.attr("onClick").indexOf(thisid)>0) {
+					if ($e.attr("data-id") == thisid) {
 						$e.css(window.styles.itemHighlight);
 						$e.addClass("highlight").scrollintoview();
 					} else {
@@ -197,6 +201,25 @@ var markerLayer = L.mapbox.markerLayer()
 		}
 	}
 	
+	function f_filter(str) {
+		$("#flights ul li").each(function(i,e) {
+			var $e=$(e);
+			var t=$e.attr("title") + " "+$e.html();
+			var id=parseInt($e.attr("data-id"));
+			if ((t.indexOf(str)>0) || (!str)) {
+				$e.removeClass("filtered");
+				markerLayer.getLayer(id).setStyle(window.styles.flightIdle);
+				console.log("in: "+t);
+			} else {
+				$e.addClass("filtered");
+				markerLayer.getLayer(id).setStyle(window.styles.flightFiltered);
+			}
+
+		});
+		
+		
+	}
+	
 
 </script>
 <script type="text/template" id="popupTemplate">
@@ -208,7 +231,7 @@ var markerLayer = L.mapbox.markerLayer()
 </div>
 </script>
 <script type="text/template" id="flightTemplate">
- <li onClick="showFeature(<%= id %>,this)" title="<%= duration_format(flight.duration) %> von <%= flight.start.airport ? flight.start.airport +", " : "" %><%= flight.start.town %> (<%= flight.start.country %>) nach <%= flight.end.airport ? flight.end.airport +", " : "" %><%= flight.end.town %> (<%= flight.end.country %>) "><b><%= flight.start.point.stime.substr(0,11) %></b>  <%= flight.start.town %> - <%= flight.end.town %> </li>
+ <li data-id="<%= id %>" onClick="showFeature(<%= id %>,this)" title="<%= duration_format(flight.duration) %> von <%= flight.start.airport ? flight.start.airport +", " : "" %><%= flight.start.town %> (<%= flight.start.country %>) nach <%= flight.end.airport ? flight.end.airport +", " : "" %><%= flight.end.town %> (<%= flight.end.country %>) "><b><%= flight.start.point.stime.substr(0,11) %></b>  <%= flight.start.town %> - <%= flight.end.town %> </li>
 </script>
 
 </body>

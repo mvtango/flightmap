@@ -75,15 +75,21 @@ jQuery(document).ready(function($) {
 		{"field" : "start.time", "display" : "day" },
 		{"field" : "duration", "display" : "duration" },
 		{"field" : "start.town", "display" : "first" },
-		{"last" : "end.town", "display" : "first" },
+		{"field" : "end.town", "display" : "last" },
 	
 	],
     paging: {
       from: 0,
-      size: 10
+      size: 20
     },
     enable_rangeselect: true,
+    post_search_callback: function() { 	
+						$( "[title]" ).tooltip();
+						},
+	pager_slider: true,
+	pager_on_top: true,
   });
+  window.routes={};
   // set up form
   $('.demo-form').submit(function(e) {
     e.preventDefault();
@@ -150,7 +156,9 @@ jQuery(document).ready(function($) {
 	<td> 
 	<%= record.duration %> h.
 	</td>
-</td></tr>
+	<td><input type="checkbox"  data-id="<%= record. id %>">map</a></td>
+	<td><% window.routes[record.id]=record.route; %></td>
+</tr>
 
 </div>
 </script>   
