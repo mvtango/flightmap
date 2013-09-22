@@ -38,7 +38,9 @@ bases={"filtered" : "raw/217.11.52.54/fly/filtered",
        "full"     : "raw/217.11.52.54/fly/dumps" ,
        "local"    : "/home/martin/projekte/flightmap/data/tsv",
        "dazem"    : "/home/martin/projekte/flightmap/data/dazem",
-       "server"   : "/home/michael/flightradar_scraper/dumps-jsonp-filtered/" }
+       "server"   : "/home/michael/flightradar_scraper/dumps-jsonp-filtered/",
+       "server-old"   : "/home/michael/flightradar_scraper/filtered/",
+        }
 
 
 
@@ -268,12 +270,14 @@ if __name__== "__main__" :
 			dcs=map(lambda a :  { 		"start"     : { "time" : a["properties"]["starttime"].replace(" ","T"),
 														"alt"  : a["properties"].get("points",[{ 'alt' : None }])[0]["alt"],
 														"town" : a["properties"]["start"]["town"],
+														"country" : a["properties"]["start"]["country"],
 														"dist" : a["properties"]["start"]["distance"],
 														"speed": a["properties"].get("points",[{ 'speed' : None }])[0]["speed"]
 													 },
 										"end"     : {   "time" : a["properties"]["endtime"].replace(" ","T"),
 														"alt"  : a["properties"].get("points",[{ 'alt' : None }])[0]["alt"],
 														"town" : a["properties"]["end"]["town"],
+														"country" : a["properties"]["end"]["country"],
 														"dist" : a["properties"]["end"]["distance"]	,
 														"speed": a["properties"].get("points",[{ 'speed' : None }])[-1]["speed"]
 													 },
@@ -283,6 +287,7 @@ if __name__== "__main__" :
 										"flight"    : a["properties"]["reg"],
 										"radar"     : a["properties"]["radar"],
 										"hex"       : a["properties"]["hex"],
+										"type"      : a["properties"]["type"],
 										"datum"     : a["properties"]["starttime"][:10],
 										"id"        : a["id"] }, fs) # filter(lambda a: a["properties"].get("points",False),fs))
 			if args["flightdb"] :

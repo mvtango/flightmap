@@ -60,11 +60,16 @@ jQuery(document).ready(function($) {
     search_url: search_server(),
     search_index: 'elasticsearch',
     facets: [ 
-        {'field': 'start.town', 'display': 'first'}, 
-        {'field': 'end.town', 'display': 'last'}, 
+        {'field': 'start.town', 'display': 'first (town)'}, 
+        {'field': 'start.country', 'display': 'first (country)'}, 
+        {'field': 'end.town', 'display': 'last (town)'}, 
+        {'field': 'end.country', 'display': 'last (country)'}, 
         {'field': 'reg', 'display': 'registration'}, 
         {'field': 'datum', 'display': 'day'}, 
         {'field': 'duration', 'display': 'duration'}, 
+        {'field': 'type', 'display': 'type'}, 
+        {'field': 'radar', 'display': 'radar'}, 
+        {'field': 'flight', 'display': 'flight'}, 
 
     ],
     result_display : [
@@ -92,7 +97,8 @@ jQuery(document).ready(function($) {
     },
     enable_rangeselect: true,
     post_search_callback: function() { 	
-						$( "[title]" ).tooltip();
+					    $(".tooltip").hide();
+						$("[title]" ).tooltip();
 						},
 	pager_slider: true,
 	pager_on_top: true,
@@ -133,14 +139,15 @@ jQuery(document).ready(function($) {
 
 <div class="container"> 
   <div class="content">
-    <div class="page-header">
+    <div class="page-header" style="position: relative">
+      <div style="position: absolute; padding: 4px; background: #F0F0F0" class="notify_loading">
+		<h2>Loading</h2>
+	  </div>
       <h1>
 		Flights
       </h1>
     </div>
-    <div class="facet-view-simple"></div>
-
-
+    <div " class="facet-view-simple"></div>
   </div>
 
   <footer>
@@ -152,13 +159,13 @@ jQuery(document).ready(function($) {
 	<%= record.datum %>
 	</td>
 	<td>
-		 <b title="<%= record.flight %> / <%= record.radar %> / <%= record.hex %>"><%= record.reg ? record.reg : '-' %> </b>
+		 <b style="display:inline-block; width: 50%" title="<%= record.reg ? '' : 'No registration. ' %> <%= record.type ? 'Type '+record.type+' ' : '' %> <%= record.flight ? 'Flight '+record.flight+' ' : '' %>  <%= record.radar ? 'Radar '+record.radar+' ' : '' %> ID <%= record.hex %>"><%= record.reg ? record.reg : '[' +record.hex+']' %> </b><%= record.reg ? '<a class="btn btn-small btn-info" target="_blank" href="http://www.planespotters.net/search.php?q='+record.reg.replace("+","%2B")+'"><i class="icon-white icon-plane"></i></a>' : '' %>
     </td>
     <td>
 	<span title="<%= record.start.speed %> mph / <%= Math.floor(record.start.dist+0.5) %> km / <%= record.start.alt %> ft" class="airport start <%= ((record.duration<0.3) || (record.start.alt>3000) || (record.start.dist > 9)) ? "far" : "near" %>"> 
-	<%= record.start.town %>
+	<%= record.start.town %><%= record.start.country ? ', ' + record.start.country : '' %>
 	</span> - <span  title="<%= record.end.speed %> mph / <%= Math.floor(record.end.dist+0.5) %> km / <%= record.end.alt %> ft" class="airport landing <%= ((record.duration<0.3) || (record.end.alt>3000) || (record.end.dist > 9)) ? "far" : "near" %>"> 
-	<%= record.end.town %>
+	<%= record.end.town %><%= record.end.country ? ', ' + record.end.country : '' %>
 	</span>
 	</td>
 	<td> 
