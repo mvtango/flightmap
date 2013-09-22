@@ -97,10 +97,19 @@ jQuery(document).ready(function($) {
     },
     enable_rangeselect: true,
     post_search_callback: function() { 	
-					    $(".tooltip").hide();
-						$("[title]" ).tooltip();
+						$("#facetview_results [title]" ).tooltip();
+						$("#facetview_results a.map" ).popover({ trigger: 'click' });
 						},
-	pager_slider: true,
+	pre_search_callback: function() { 	
+						$(".tooltip").hide();
+						var $n=$("#facetview_results");
+						var p=$n.position();
+						p["width"]=$n.width()
+						p["height"]=$n.height();
+					    $(".notify_loading").css(p);
+						},
+
+	pager_slider: false,
 	pager_on_top: true,
   });
   window.routes={};
@@ -121,6 +130,9 @@ jQuery(document).ready(function($) {
 </head>
 
 <body>
+<div style="position: absolute; left:200px; top: 200px; text-align: center; background: #808080; opacity: 0.5; " class="notify_loading">
+  <img style="display: inline-block; padding: 30px;" src="img/loader.gif">
+</div>
 
 <div class="navbar navbar-fixed-top">
   <div class="navbar-inner">
@@ -140,9 +152,6 @@ jQuery(document).ready(function($) {
 <div class="container"> 
   <div class="content">
     <div class="page-header" style="position: relative">
-      <div style="position: absolute; padding: 4px; background: #F0F0F0" class="notify_loading">
-		<h2>Loading</h2>
-	  </div>
       <h1>
 		Flights
       </h1>
@@ -159,7 +168,7 @@ jQuery(document).ready(function($) {
 	<%= record.datum %>
 	</td>
 	<td>
-		 <b style="display:inline-block; width: 50%" title="<%= record.reg ? '' : 'No registration. ' %> <%= record.type ? 'Type '+record.type+' ' : '' %> <%= record.flight ? 'Flight '+record.flight+' ' : '' %>  <%= record.radar ? 'Radar '+record.radar+' ' : '' %> ID <%= record.hex %>"><%= record.reg ? record.reg : '[' +record.hex+']' %> </b><%= record.reg ? '<a class="btn btn-small btn-info" target="_blank" href="http://www.planespotters.net/search.php?q='+record.reg.replace("+","%2B")+'"><i class="icon-white icon-plane"></i></a>' : '' %>
+		 <b style="display:inline-block; width: 50%" title="<%= record.reg ? '' : 'No registration. ' %> <%= record.type ? 'Type '+record.type+' ' : '' %> <%= record.flight ? 'Flight '+record.flight+' ' : '' %>  <%= record.radar ? 'Radar '+record.radar+' ' : '' %> ID <%= record.hex %>"><%= record.reg ? record.reg : '[' +record.hex+']' %> </b><%= record.reg ? '<a class="btn btn-mini" target="_blank" href="http://www.planespotters.net/search.php?q='+record.reg.replace("+","%2B")+'"><i class="icon icon-plane"></i></a>' : '' %>
     </td>
     <td>
 	<span title="<%= record.start.speed %> mph / <%= Math.floor(record.start.dist+0.5) %> km / <%= record.start.alt %> ft" class="airport start <%= ((record.duration<0.3) || (record.start.alt>3000) || (record.start.dist > 9)) ? "far" : "near" %>"> 
@@ -171,8 +180,7 @@ jQuery(document).ready(function($) {
 	<td> 
 	<%= record.duration %> h.
 	</td>
-	<td><input type="checkbox"  data-id="<%= record. id %>">map</a></td>
-	<td><% window.routes[record.id]=record.route; %></td>
+	<td><a class="btn map btn-mini" data-toggle="popover" data-placement="left" data-content="<%= record.route %>" href="#"><i class="icon-comment"></i></a></td>
 </tr>
 
 </div>

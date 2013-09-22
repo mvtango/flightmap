@@ -1090,6 +1090,9 @@ search box - the end user will not know they are happening.
         // execute a search
         var dosearch = function() {
             jQuery('.notify_loading').show();
+            if (typeof options.pre_search_callback == 'function') {
+                options.pre_search_callback.call(this);
+            }
             // update the options with the latest q value
             if ( options.searchbox_class.length == 0 ) {
                 options.q = $('.facetview_freetext', obj).val();
