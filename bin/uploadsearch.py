@@ -4,7 +4,10 @@ import simplejson,sys
 s=ElasticSearch("http://localhost:9200")
 
 if "init" in sys.argv :
-	s.delete_index("flights");
+	try :
+		s.delete_index("flights");
+	except Exception, e:
+		print e
 	try :
 		s.create_index("flights")
 	except Exception, e:

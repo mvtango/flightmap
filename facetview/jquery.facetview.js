@@ -52,7 +52,7 @@ jQuery.extend({
             hash = hashes[i].split('=');
             if ( hash.length > 1 ) {
                 if ( hash[1].replace(/%22/gi,"")[0] == "[" || hash[1].replace(/%22/gi,"")[0] == "{" ) {
-                    hash[1] = hash[1].replace(/^%22/,"").replace(/%22$/,"");
+                    hash[1] = hash[1].replace(/^%22/,"").replace(/%22$/,"").replace("#","");
                     var newval = JSON.parse(unescape(hash[1].replace(/%22/gi,'"')));
                 } else {
                     var newval = unescape(hash[1].replace(/%22/gi,'"'));
