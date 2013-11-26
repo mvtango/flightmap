@@ -15,7 +15,7 @@ import traceback
 import copy 
 import simplejson
 from flightmap.airportlocator import nearest_airport
-import couchdb
+# import couchdb
 
 
 # Quick fix for your example:
