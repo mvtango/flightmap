@@ -304,7 +304,11 @@ if __name__== "__main__" :
 						logger.error("Update %s failed (%s)" % (r["id"],e))
 				logger.info("%s flights saved to db %s" % (len(dcs),args["flightdb"]))
 			elif args["flightdocs"] :
-				simplejson.dump(dcs,open(args["flightdocs"],"w"))
+				if args["flightdocs"]=="-" :
+					fdof=sys.stdout
+				else :
+					fdof=open(args["flightdocs"],"w")
+				simplejson.dump(dcs,fdof)
 				logger.info("%s flights saved to to json doc list %s" % (len(dcs),args["flightdocs"]))
 
 				
