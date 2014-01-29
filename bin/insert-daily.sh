@@ -11,5 +11,7 @@ tail -1000 $log >>$log.tmp
 
 mv $log.tmp $log 
 
+date >>$log
+
 
 
