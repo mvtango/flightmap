@@ -24,8 +24,12 @@ fieldnames=["time","flight","hex","lat","lng","head","alt","speed","squawk","rad
 
 
 bases={"filtered" : "raw/217.11.52.54/fly/filtered",
-       "full"     : "raw/217.11.52.54/fly/dumps" }
-
+       "full"     : "raw/217.11.52.54/fly/dumps", 
+       "server"   : "/home/michael/flightradar_scraper/dumps-jsonp-filtered/",
+       "server-old"   : "/home/michael/flightradar_scraper/filtered/",
+       "server-full"   : "/home/michael/flightradar_scraper/dumps-jsonp/",
+       "server-full-old"   : "/home/michael/flightradar_scraper/dumps/",
+	}
 
 parser = argparse.ArgumentParser(description="fd24 extractor", conflict_handler='resolve')
 parser.add_argument('infiles',nargs="*")
@@ -34,7 +38,7 @@ parser.add_argument('--every',action="store",help="record positions only every N
 parser.add_argument('--slower',action="store",help="record positions only if speed below N; if set to 0, don't filter by speed - this is the default",type=int, metavar="N", default=0)
 parser.add_argument('--listfiles',action="store_const",help="list files only, no output", default=0, const=1)
 parser.add_argument('--by_registration',action="store_const",help="output a different file for every aircraft registration code, see filname_template for setting the filename and path", default=0, const=1)
-parser.add_argument('--registration',action="store",help="search for flight registration", default=None)
+parser.add_argument('--registration','-r', action="append",help="search for flight registration", default=None)
 parser.add_argument('--filename_template',action="store",help="filename template for matched records", default="raw/extracted/by-registration/reg-%(reg)s.csv")
 parser.add_argument('--after',action="store",help="files after Year-Month-Day (exclusive)", default="2012-07-01")
 parser.add_argument('--before',action="store",help="files before Year-Month-Day (exclusive)", default=datetime.datetime.now().strftime("%Y-%m-%d"))
@@ -49,8 +53,6 @@ parser.add_argument('--copy',action="store_const",help="make output format = inp
 
 args = vars(parser.parse_args())
 
-bases={"filtered" : "raw/217.11.52.54/fly/filtered",
-       "full"     : "raw/217.11.52.54/fly/dumps" }
 
 
 def f_open(a) :
@@ -160,7 +162,12 @@ if __name__== "__main__" :
 				if (recc % 1000000)==0 :
 					logger.info("%s:%s Mio. records" % (fn,recc/1000000))
 				if args["registration"] :
-					if not rec["reg"][:len(args["registration"])]==args["registration"] :
+					cont=True
+					for r in args["registration"] :
+						if rec["reg"][:len(r)]==r :
+							cont=False
+							break
+					if cont :
 						continue
 				if args["slower"] :
 					if int(rec["speed"])>=args["slower"] :
