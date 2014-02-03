@@ -1,7 +1,8 @@
 FacetView_ is a pure javascript frontend for ElasticSearch search
 indices.
 
-(This used to work against SOLR too, but the need to maintain support for that became less, and is now not a priority. So has been removed altogether. If anyone needs it, it could be added back in by writing an alternative to the elasticsearchquery() with a solrsearchquery(), and making sure the returned resultset can be parsed out properly. Used to work fine so it can be done, but as new functionality like nesting and so on was brought in, it became less important.)
+This instance was customized to search augmented ADS-B data to map the positions of airplanes.
+
 
 It's been developed as a jQuery plugin and lets you easily embed a faceted
 browse front end into any web page.
