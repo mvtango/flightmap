@@ -1,0 +1,11 @@
+server {
+  listen   217.11.52.54:80;
+  server_name stern.newsradar.org flight.newsradar.org;
+  access_log /var/log/nginx/stern_access.log;
+  error_log /var/log/nginx/stern_error.log;
+  location / {
+	root /var/www/stern.newsradar.org;
+  	auth_basic            "stern Flugsuche Restricted";
+  	auth_basic_user_file  /home/mvirtel/projekte/flightmap/users;
+  }
+}

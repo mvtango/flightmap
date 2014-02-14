@@ -1,0 +1,44 @@
+  server {
+ 
+    server_name  search.newsradar.org;
+    listen   217.11.52.54:80;
+ 
+    error_log   /var/log/nginx/search.newsradar.org-errors.log;
+    access_log   /var/log/nginx/search.newsradar.org.log;
+ 
+    location / {
+ 
+      # Deny access to Cluster API
+      if ($request_filename ~ "_cluster") {
+        return 403;
+        break;
+      }
+
+     location /robots.txt {
+
+	root /var/www/search.newsradar.org;
+
+     }
+ 
+      # Pass requests to ElasticSearch
+      proxy_pass http://localhost:9200;
+      proxy_redirect off;
+          
+      proxy_set_header  X-Real-IP  $remote_addr;
+      proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header  Host $http_host;
+ 
+      # Authorize access
+      #auth_basic           "ElasticSearch";
+      #auth_basic_user_file passwords;
+ 
+      # Route all requests to authorized user's own index
+      #rewrite  ^(.*)$  /$remote_user$1  break;
+      #rewrite_log on;
+ 
+      #return 403;
+      #rewrite  ^es/(.*)$  http://localhost:9200/$1  break;
+    
+    }
+ 
+  }
