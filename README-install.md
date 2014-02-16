@@ -10,3 +10,9 @@ pip install pyelasticsearch
 
 cd bin/flightmap ; ./getdata.sh
 
+
+
+# Initialize Elasticsearch before inserting any records
+
+cd bin/flightmap; python ./uploadsearch init
+

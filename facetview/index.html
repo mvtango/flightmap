@@ -140,7 +140,7 @@ jQuery(document).ready(function($) {
 	  if (document.location.href.indexOf("newsradar.org")>0) {
 		  return "http://search.newsradar.org/flights/_search?";
 	  } else {
-		  return 'http://localhost:9200/flights/_search?';
+		  return 'http://apps.opendatacity.de/elasticsearch/flights/_search?';
 	  }
   }
 	
@@ -233,9 +233,9 @@ jQuery(document).ready(function($) {
 
       <a class="brand" href="/">Flugsuche</a>
       <ul class="nav">
-        <li><a href='/?source={"query":{"bool":{"must":[{"term":{"reg":"16+01"}}]}},"size":20,"sort":[{"start.time":{"order":"desc"}}]}'>Konrad Adenauer</a></li>
-        <li><a href='/?source={"query":{"bool":{"must":[{"term":{"reg":"D-AZEM"}}]}},"size":20,"sort":[{"start.time":{"order":"desc"}}]}'>BND-Jet</a></li>
-        <li><a href='/?source={"query":{"bool":{"must":[{"term":{"reg":"D-BADA"}}]}},"size":20,"sort":[{"start.time":{"order":"desc"}}]}'>ADAC (D-BADA)</a></li>
+        <li><a href='./?source={"query":{"bool":{"must":[{"term":{"reg":"16+01"}}]}},"size":20,"sort":[{"start.time":{"order":"desc"}}]}'>Konrad Adenauer</a></li>
+        <li><a href='./?source={"query":{"bool":{"must":[{"term":{"reg":"D-AZEM"}}]}},"size":20,"sort":[{"start.time":{"order":"desc"}}]}'>BND-Jet</a></li>
+        <li><a href='./?source={"query":{"bool":{"must":[{"term":{"reg":"D-BADA"}}]}},"size":20,"sort":[{"start.time":{"order":"desc"}}]}'>ADAC (D-BADA)</a></li>
       </ul>
     </div>
   </div>
@@ -273,7 +273,7 @@ jQuery(document).ready(function($) {
 	<%= record.datum %>
 	</td>
 	<td>
-	        <a href="/?source={%22query%22:{%22bool%22:{%22must%22:[{%22term%22:{%22reg%22:%22<%= record.reg %>%22}}]}},%22size%22:20,%22sort%22:[{%22start.time%22:{%22order%22:%22desc%22}}]} "><b style="display:inline-block; width: 50%" title="<%= record.reg ? '' : 'No registration. ' %> <%= record.type ? 'Type '+record.type+' ' : '' %> <%= record.flight ? 'Flight '+record.flight+' ' : '' %>  <%= record.radar ? 'Radar '+record.radar+' ' : '' %> ID <%= record.hex %>"><%= record.reg ? record.reg : '[' +record.hex+']' %> </b></a><%= record.reg ? '<a class="btn btn-mini" target="_blank" href="http://www.planespotters.net/search.php?q='+record.reg.replace("+","%2B")+'"><i class="icon icon-plane"></i></a>' : '' %>
+	        <a href="./?source={%22query%22:{%22bool%22:{%22must%22:[{%22term%22:{%22reg%22:%22<%= record.reg %>%22}}]}},%22size%22:20,%22sort%22:[{%22start.time%22:{%22order%22:%22desc%22}}]} "><b style="display:inline-block; width: 50%" title="<%= record.reg ? '' : 'No registration. ' %> <%= record.type ? 'Type '+record.type+' ' : '' %> <%= record.flight ? 'Flight '+record.flight+' ' : '' %>  <%= record.radar ? 'Radar '+record.radar+' ' : '' %> ID <%= record.hex %>"><%= record.reg ? record.reg : '[' +record.hex+']' %> </b></a><%= record.reg ? '<a class="btn btn-mini" target="_blank" href="http://www.planespotters.net/search.php?q='+record.reg.replace("+","%2B")+'"><i class="icon icon-plane"></i></a>' : '' %>
     </td>
     <td>
 	<span title="<%= record.start.speed %> mph / <%= Math.floor(record.start.dist+0.5) %> km / <%= record.start.alt %> ft" class="airport start <%= ((record.duration<0.3) || (record.start.alt>3000) || (record.start.dist > 9)) ? "far" : "near" %>"> 
