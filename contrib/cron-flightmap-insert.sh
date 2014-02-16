@@ -1,6 +1,6 @@
 #! /bin/sh
 
-cd /home/mvirtel/projekte/flightmap/bin
+cd /home/opendatacity/flightmap/bin
 
 start=`date --date="2 days ago"  +%Y-%m-%d`
 log=log/daily-insert.log

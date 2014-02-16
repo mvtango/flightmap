@@ -40,6 +40,7 @@ bases={"filtered" : "raw/217.11.52.54/fly/filtered",
        "dazem"    : "/home/martin/projekte/flightmap/data/dazem",
        "server"   : "/home/michael/flightradar_scraper/dumps-jsonp-filtered/",
        "server-old"   : "/home/michael/flightradar_scraper/filtered/",
+       "nyx"      : "/home/opendatacity/scraper/flightradar24/data/flightradar_scraper/dumps-jsonp-filtered/"
         }
 
 
