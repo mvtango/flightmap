@@ -1,4 +1,9 @@
 # Parameter
+import os
+_here=os.path.split(__file__)[0]
+if _here>"" :
+	os.chdir(_here)
+
 
 delay = 20
 
@@ -98,9 +103,9 @@ if __name__ == '__main__':
 
 
 	while True : 
-		with SkyScraperClient.create("Flightradar24",
-		      contacts=[dict(email="sss@gmx.info",name="Martin Virtel")],
-		      success_timer=delay*10) as watcher :
+	#	with SkyScraperClient.create("Flightradar24",
+	#	      contacts=[dict(email="sss@gmx.info",name="Martin Virtel")],
+	#	      success_timer=delay*10) as watcher :
 			if count > 0:
 				time.sleep(delay)
 			   
@@ -142,12 +147,12 @@ if __name__ == '__main__':
 			dumpFile = codecs.open("dumps-jsonp/"+outputFilename+".tsv", "a","utf-8")
 			filteredFile = codecs.open("dumps-jsonp-filtered/"+outputFilename+".tsv", "a","utf-8") 
 								
-			print("Processing %s positions" % len(planeJSON.keys()))			
+			# print("Processing %s positions" % len(planeJSON.keys()))			
 			for code in planeJSON.keys():
 				planes += 1
 				data = planeJSON[code]
 				if (type(data) == type([])) :
-					print "Data (OK) %s %s" % (planes,data)
+					# print "Data (OK) %s %s" % (planes,data)
 					data = [timeString, code] + data
 		
 					for i in range(len(data)):
@@ -168,17 +173,18 @@ if __name__ == '__main__':
 						except UnicodeEncodeError,e :
 							logger.error("Error encoding %s:%s" % (repr(line),e))
 				else :
-					print "Data (not ok): %s" % data
-			print("Processed %s positions" % len(planeJSON.keys()))			
+					# print "Data (not ok): %s" % data
+					pass
+			# print("Processed %s positions" % len(planeJSON.keys()))			
 			logger.debug("Processed %s positions" % len(planeJSON.keys()))			
 			num=planes-lplanes
 			lplanes=planes
-			if (num>50) :
-				watcher.success()
-			else :
-				watcher.log("%s Planes" % (num,))
+#			if (num>50) :
+#				watcher.success()
+#			else :
+#				watcher.log("%s Planes" % (num,))
 
 
 
-	print "fertig"
+	# print "fertig"
 

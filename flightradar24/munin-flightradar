@@ -1,1 +1,23 @@
-/home/michael/flightradar_scraper/munin-flightradar
+#!/bin/bash
+BASE=/home/opendatacity/flightmap/flightradar24
+
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Plane positions found
+graph_vlabel planes 
+planes.label planes
+graph_category scraper
+graph_info The number of plane positions recorded, calculated from  $BASE/log/jsonp__main__.log, which is written by $BASE/jsonp_scraper.py. This should increase by several thousand every minute.
+planes.info number of plane positions recorded
+planes.type COUNTER
+planes.critical 10:
+planes.warning 50:
+EOM
+        exit 0;;
+esac
+cd $BASE
+
+echo -n "planes.value "
+tail -2 log/jsonp__main__.log | grep run\ \# | cut -d" " -f14
