@@ -49,7 +49,7 @@ do_start()
 	#   2 if daemon could not be started
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
 		|| return 1
-	start-stop-daemon --start --user opendatacity --background --quiet --pidfile $PIDFILE --exec $DAEMON -- \
+	start-stop-daemon --start --chuid opendatacity --background --quiet --pidfile $PIDFILE --make-pidfile --exec $DAEMON -- \
 		$DAEMON_ARGS \
 		|| return 2
 	# Add code here, if necessary, that waits for the process to be ready
