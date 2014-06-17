@@ -112,7 +112,14 @@ case "$1" in
 	esac
 	;;
   status)
-	status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
+	[ ! -f $PIDFILE ] && echo $NAME - no pidfile $PIDFILE && exit 1
+	if kill -0 `cat $PIDFILE` 2>&1 >/dev/null ; then 
+		echo $NAME running at `cat $PIDFILE` 
+		exit 0
+	else 
+		echo $NAME pid `cat $PIDFILE` not found 
+		exit 1
+	fi
 	;;
   #reload|force-reload)
 	#
