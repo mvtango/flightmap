@@ -11,8 +11,9 @@ planes.label planes
 graph_category scraper
 graph_info The number of plane positions recorded, calculated from  $BASE/log/jsonp__main__.log, which is written by $BASE/jsonp_scraper.py. This should increase by several thousand every minute.
 planes.info number of plane positions recorded
-planes.max 5000
-planes.type COUNTER
+planes.max 500
+planes.min 0
+planes.type DERIVE 
 planes.critical 10:
 planes.warning 50:
 EOM
