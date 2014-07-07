@@ -22,4 +22,4 @@ esac
 cd $BASE
 
 echo -n "planes.value "
-tail -2 log/jsonp__main__.log | grep run\ \# | cut -d" " -f14
+tail -20 log/jsonp__main__.log | grep run\ \# | tail -1 | cut -d" " -f14
