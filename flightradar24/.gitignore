@@ -1,0 +1,4 @@
+*.tgz
+log
+dump*
+*.pyc
