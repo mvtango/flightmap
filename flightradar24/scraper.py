@@ -38,7 +38,8 @@ import unicodedata
 import logging
 import locale
 import codecs
-
+from threading import Timer
+import thread, time, sys
 
 ## LOGGING 
 
@@ -73,6 +74,12 @@ airlineSet = Set(searchAirlines)
 planeIdSet = Set(searchPlaneIds)
 
 
+def timeout() :
+	logger.error("Timer interrupted main thread")
+	thread.interrupt_main()
+
+
+
 
 # Beginne Scraping
 
@@ -81,6 +88,7 @@ time.tzset()
 count = 0
 planes = 0
 data = ""
+timer = None
 
 if __name__ == '__main__':
 
@@ -88,6 +96,12 @@ if __name__ == '__main__':
 
 		if count > 0:
 			time.sleep(delay)
+		if timer is not None :
+			timer.cancel()
+			logger.debug("Timer set to 5")
+			timer=Timer(5,timeout) # delay+40,timeout)
+			timer.start()
+
 		   
 		count += 1
 		
@@ -139,5 +153,5 @@ if __name__ == '__main__':
 			
 
 
-	print "fertig"
+	logger.debug("Exited") 
 

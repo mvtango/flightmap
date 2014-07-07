@@ -51,7 +51,10 @@ import logging
 import locale
 import codecs
 import re
-
+from threading import Timer
+import thread, time, sys
+import signal
+ 
 
 ## LOGGING 
 
@@ -80,6 +83,23 @@ if not os.path.exists('dumps'):
 if not os.path.exists('filtered'):
     os.makedirs('filtered')
 
+# Wecker
+
+
+def timeout() :
+	logger.error("Timer interrupted main thread")
+	thread.interrupt_main()
+
+# Unterbrechung
+
+def signal_term_handler(signal, frame):
+    logger.error('got interrupt signal')
+    sys.exit(0)
+ 
+signal.signal(signal.SIGTERM, signal_term_handler)
+signal.signal(signal.SIGHUP, signal_term_handler)
+
+
 # initialisiere Suche
 
 airlineSet = Set(searchAirlines)
@@ -95,95 +115,103 @@ count = 0
 planes = 0
 lplanes=0
 data = ""
+timer=None 
 SkyScraperClient=Client()
 
 if __name__ == '__main__':
 
 	planeRE=re.compile(r'"[^"]+":\[[^\]]+]')
 
-
-	while True : 
-	#	with SkyScraperClient.create("Flightradar24",
-	#	      contacts=[dict(email="sss@gmx.info",name="Martin Virtel")],
-	#	      success_timer=delay*10) as watcher :
-			if count > 0:
-				time.sleep(delay)
-			   
-			count += 1
-			
-				
-			timeNow = time.localtime()
-			timeString = time.strftime("%Y.%m.%d %H:%M:%S", timeNow)
-			outputFilename = time.strftime("%Y-%m-%d", timeNow)
-			
-			# print timeString + ' (' + str(count) + ')'
-			logger.info("scraper run # %s, %s planes" % (str(count),str(planes)))
-			planeText = urllib2.urlopen("http://krk.fr24.com/zones/full_all.js").read()
-			planeJSON={}
-			iterator=planeRE.finditer(planeText)
-			cont=True
-			while cont :
-				try :
-					jstr="{%s}" % iterator.next().group()
-    				except StopIteration :
-        				cont=False
-				else :
-					try :
-						obj=json.loads(jstr)
-					except :
-						logger.debug("Error with %s" % jstr , exc_info=True)
-					else :
-        					planeJSON.update(obj)
-				finally :
-					pass
-
-
-
-				
-
-
-
-			
-			dumpFile = codecs.open("dumps-jsonp/"+outputFilename+".tsv", "a","utf-8")
-			filteredFile = codecs.open("dumps-jsonp-filtered/"+outputFilename+".tsv", "a","utf-8") 
-								
-			# print("Processing %s positions" % len(planeJSON.keys()))			
-			for code in planeJSON.keys():
-				planes += 1
-				data = planeJSON[code]
-				if (type(data) == type([])) :
-					# print "Data (OK) %s %s" % (planes,data)
-					data = [timeString, code] + data
+	try :
 		
-					for i in range(len(data)):
-						if isinstance(data[i], basestring):
-							data[i] = data[i]
-						else:
-							data[i] = str(data[i])
+		while True : 
+		#	with SkyScraperClient.create("Flightradar24",
+		#	      contacts=[dict(email="sss@gmx.info",name="Martin Virtel")],
+		#	      success_timer=delay*10) as watcher :
+				if count > 0:
+					time.sleep(delay)
+				if timer is not None :
+					timer.cancel()
+				timer=Timer(delay+40,timeout)
+				timer.start()
+
+				   
+				count += 1
 				
-					line = '\t'.join(data) + '\n'
+					
+				timeNow = time.localtime()
+				timeString = time.strftime("%Y.%m.%d %H:%M:%S", timeNow)
+				outputFilename = time.strftime("%Y-%m-%d", timeNow)
+				
+				# print timeString + ' (' + str(count) + ')'
+				logger.info("scraper run # %s, %s planes" % (str(count),str(planes)))
+				planeText = urllib2.urlopen("http://krk.fr24.com/zones/full_all.js").read()
+				planeJSON={}
+				iterator=planeRE.finditer(planeText)
+				cont=True
+				while cont :
 					try :
-						dumpFile.write(line)
-					except UnicodeEncodeError,e :
-						logger.error("Error encoding %s:%s" % (repr(line),e))
-				
-					if (data[11] in planeIdSet) or (code[0:3] in airlineSet):
+						jstr="{%s}" % iterator.next().group()
+					except StopIteration :
+						cont=False
+					else :
 						try :
-							filteredFile.write(line)
+							obj=json.loads(jstr)
+						except :
+							logger.debug("Error with %s" % jstr , exc_info=True)
+						else :
+							planeJSON.update(obj)
+					finally :
+						pass
+
+
+
+					
+
+
+
+				
+				dumpFile = codecs.open("dumps-jsonp/"+outputFilename+".tsv", "a","utf-8")
+				filteredFile = codecs.open("dumps-jsonp-filtered/"+outputFilename+".tsv", "a","utf-8") 
+									
+				# print("Processing %s positions" % len(planeJSON.keys()))			
+				for code in planeJSON.keys():
+					planes += 1
+					data = planeJSON[code]
+					if (type(data) == type([])) :
+						# print "Data (OK) %s %s" % (planes,data)
+						data = [timeString, code] + data
+			
+						for i in range(len(data)):
+							if isinstance(data[i], basestring):
+								data[i] = data[i]
+							else:
+								data[i] = str(data[i])
+					
+						line = '\t'.join(data) + '\n'
+						try :
+							dumpFile.write(line)
 						except UnicodeEncodeError,e :
 							logger.error("Error encoding %s:%s" % (repr(line),e))
-				else :
-					# print "Data (not ok): %s" % data
-					pass
-			# print("Processed %s positions" % len(planeJSON.keys()))			
-			logger.debug("Processed %s positions" % len(planeJSON.keys()))			
-			num=planes-lplanes
-			lplanes=planes
-#			if (num>50) :
-#				watcher.success()
-#			else :
-#				watcher.log("%s Planes" % (num,))
-
+					
+						if (data[11] in planeIdSet) or (code[0:3] in airlineSet):
+							try :
+								filteredFile.write(line)
+							except UnicodeEncodeError,e :
+								logger.error("Error encoding %s:%s" % (repr(line),e))
+					else :
+						# print "Data (not ok): %s" % data
+						pass
+				# print("Processed %s positions" % len(planeJSON.keys()))			
+				logger.debug("Processed %s positions" % len(planeJSON.keys()))			
+				num=planes-lplanes
+				lplanes=planes
+	#			if (num>50) :
+	#				watcher.success()
+	#			else :
+	#				watcher.log("%s Planes" % (num,))
+	except Exception, e :
+		logger.exception("Aborted")
 
 
 	# print "fertig"
