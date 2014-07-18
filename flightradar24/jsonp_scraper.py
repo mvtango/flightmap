@@ -145,7 +145,11 @@ if __name__ == '__main__':
 				
 				# print timeString + ' (' + str(count) + ')'
 				logger.info("scraper run # %s, %s planes" % (str(count),str(planes)))
-				planeText = urllib2.urlopen("http://krk.fr24.com/zones/full_all.js").read()
+				try :
+					planeText = urllib2.urlopen("http://krk.fr24.com/zones/full_all.js").read()
+				except urllib2.URLError,e :
+					logger.error("URL Open Error: %s" % e)
+					planeText=""
 				planeJSON={}
 				iterator=planeRE.finditer(planeText)
 				cont=True
