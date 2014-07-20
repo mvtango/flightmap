@@ -46,7 +46,7 @@ bases={"filtered" : "raw/217.11.52.54/fly/filtered",
 
 
 fieldnames={ 'old' : ["time","flight","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp"],
-             'new' : ["time","unkonwn","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp"]
+             'new' : ["time","flight","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp","fair","tair","fcode","e1","e2","e3","e4"]
 		   }
 
 parser = argparse.ArgumentParser(description="fd24 extractor", conflict_handler='resolve')
@@ -99,11 +99,12 @@ def map_rec(rec,where="") :
 		logger.error("%s errors: %s in %s" % (len(errors),",".join(errors),repr(rec)))
 	return rec
 
+from opener import f_open 
 
-def f_open(a) :
-	if re.search("\.bz2$",a) :
-		return bz2.BZ2File(a,"r")
-	return open(a,"r")
+#def f_open(a) :
+#	if re.search("\.bz2$",a) :
+#		return bz2.BZ2File(a,"r")
+#	return open(a,"r")
 
 
 def seek_time(pot) :
@@ -177,8 +178,8 @@ def push_flight(rec,new=False) :
 		point[k]=rec[k]
 	if not key in flights :
 		info={ "flights" : [ [point] ] }
-		for k in ("reg","hex","type","reg","radar") :
-			info[k]=rec[k]
+		for k in ("reg","hex","type","radar","fair","tair","fcode") :
+			info[k]=rec.get(k,"")
 		flights[key]=info
 	else :
 		plane=flights[key]
@@ -253,14 +254,20 @@ if __name__== "__main__" :
 				fprops["starttime"]=flight[0]["stime"]
 				fprops["endtime"]=flight[-1]["stime"]
 				fprops["start"]=nearest_airport(float(flight[0]["lng"]),float(flight[0]["lat"]))[0]
+				fprops["start"]["airport"]=fprops["fair"]
 				fprops["start"]["point"]=flight[0]
 				fprops["end"]=nearest_airport(float(flight[-1]["lng"]),float(flight[-1]["lat"]))[0]			
 				fprops["end"]["point"]=flight[-1]
+				fprops["end"]["airport"]=fprops["tair"]
+				del fprops["tair"]
+				del fprops["fair"]
 				fprops["duration"]=flight[-1]["stamp"]-flight[0]["stamp"]
 				fprops["alt"]=[ a["alt"] for a in flight ]
 				fprops["points"]=[ p for p in flight ]
+			
 
 				flightid="%s-%s" % (hcode,flight[0]["stime"].replace(" ",""))
+				#logger.debug("FPROPS: %s" % pprint.pformat(fprops))
 				flightjson= { "properties" : fprops, "id" : flightid, "type" : "Feature", 
 				               "geometry" : { "type" : "LineString", 
 				               "coordinates" : [ [float(a["lng"]),float(a["lat"])] for a in flight] }  }
