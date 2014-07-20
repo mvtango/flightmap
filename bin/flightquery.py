@@ -20,9 +20,8 @@ logger=logging.getLogger(__name__)
 
 
 
-fieldnames=["time","flight","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp"]
-
-
+fieldnames=["time","flight","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp","fair","tair","fcode","e1","e2","e3","e4"]
+ 
 bases={"filtered" : "raw/217.11.52.54/fly/filtered",
        "full"     : "raw/217.11.52.54/fly/dumps", 
        "server"   : "/home/michael/flightradar_scraper/dumps-jsonp-filtered/",
