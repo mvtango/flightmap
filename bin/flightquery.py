@@ -54,11 +54,11 @@ parser.add_argument('--copy',action="store_const",help="make output format = inp
 args = vars(parser.parse_args())
 
 
-
-def f_open(a) :
-	if re.search("\.bz2$",a) :
-		return bz2.BZ2File(a,"r")
-	return open(a,"r")
+from opener import f_open
+# def f_open(a) :
+#	if re.search("\.bz2$",a) :
+#		return bz2.BZ2File(a,"r")
+#	return open(a,"r")
 
 
 def seek_time(pot) :
