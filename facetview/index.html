@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Flugsuche</title>
+  <title>OpenDataCity Flugsuche</title>
 
   <script type="text/javascript" src="vendor/jquery/1.7.1/jquery-1.7.1.min.js"></script>
 
@@ -229,13 +229,16 @@ jQuery(document).ready(function($) {
 <div class="navbar navbar-fixed-top">
   <div class="navbar-inner">
     <div class="container">
+      <a class="brand" href="/flightmap/">
+        <img src="img/odc-logo-small1.png" style="display: inline-block; height: 18px; float: left; vertical-align: baseline;"/>&nbsp;
+	Flugsuche
       </a>
-
-      <a class="brand" href="/">Flugsuche</a>
       <ul class="nav">
+	<!--
         <li><a href='./?source={"query":{"bool":{"must":[{"term":{"reg":"16+01"}}]}},"size":20,"sort":[{"start.time":{"order":"desc"}}]}'>Konrad Adenauer</a></li>
         <li><a href='./?source={"query":{"bool":{"must":[{"term":{"reg":"D-AZEM"}}]}},"size":20,"sort":[{"start.time":{"order":"desc"}}]}'>BND-Jet</a></li>
         <li><a href='./?source={"query":{"bool":{"must":[{"term":{"reg":"D-BADA"}}]}},"size":20,"sort":[{"start.time":{"order":"desc"}}]}'>ADAC (D-BADA)</a></li>
+	-->
       </ul>
     </div>
   </div>
