@@ -1,4 +1,4 @@
-#! python
+#! /usr/bin/python
 # coding: utf-8
 #
 import argparse
@@ -40,7 +40,8 @@ bases={"filtered" : "raw/217.11.52.54/fly/filtered",
        "dazem"    : "/home/martin/projekte/flightmap/data/dazem",
        "server"   : "/home/michael/flightradar_scraper/dumps-jsonp-filtered/",
        "server-old"   : "/home/michael/flightradar_scraper/filtered/",
-       "nyx"      : "/home/opendatacity/scraper/flightradar24/dumps-jsonp-filtered/"
+       "nyx"      : "/home/opendatacity/scraper/flightradar24/dumps-jsonp-filtered/",
+       "full"      : "/home/opendatacity/scraper/flightradar24/dumps-jsonp/"
         }
 
 
@@ -55,15 +56,14 @@ parser.add_argument('--listfiles',action="store_const",help="list files only, no
 parser.add_argument('--registration',action="store",help="search for flight registration", default=None)
 parser.add_argument('--after',action="store",help="files after Year-Month-Day (exclusive)", default="2012-07-01")
 parser.add_argument('--before',action="store",help="files before Year-Month-Day (exclusive)", default=datetime.datetime.now().strftime("%Y-%m-%d"))
-parser.add_argument('--basedir', action="store",help="base directory for selection, try %s" % ",".join(['"%s"' % a for a in bases.keys()]),default="raw/217.11.52.54/fly/filtered")
+parser.add_argument('--basedir', action="store",help="base directory for selection, try %s" % ",".join(['"%s"' % a for a in bases.keys()]),default="full")
 parser.add_argument('--flightgap', action="store",help="start a new flight after N minutes without data", default=30)
 parser.add_argument('--flightfile', action="store",help="output file for flight geoJSON, default: stdout", default=sys.stdout)
 parser.add_argument('--input_delimiter', action="store",help="delimiter character for input file(s), default is '<tab>'",default="\t")
-parser.add_argument('--flightdbserver', action="store",help="output couchdb database server, default: http://localhost:5984/",
-                    default="http://localhost:5984/")
-parser.add_argument('--flightdb', action="store",help="couchdb database name, default: none", default=None)
 parser.add_argument('--flightdocs', action="store",help="json docs file", default=None)
 parser.add_argument('--fieldnames', action="store",help="fieldname sequence, options: %s" % ",".join(fieldnames.keys()), default="old")
+parser.add_argument('--area', action="store",help="overflown area, format: (long,lat),(long,lat) the two points are endpoints of a diagonal that marks the requested area" , default="")
+
 
 args = vars(parser.parse_args())
 
@@ -191,6 +191,34 @@ def push_flight(rec,new=False) :
 		else :
 			plane["flights"][-1].append(point)
 			
+def find_filter() :
+	""" returns function if there is an area to filter, false otherwise """
+	if not args["area"] :
+		return lambda a: True
+	try :
+		area=re.split(r"[^0-9\.]+",args["area"])
+		assert len(area)==6
+		longs=[float(area[1]),float(area[3])]
+		lats=[float(area[2]),float(area[4])]	
+	except Exception, e:
+		logger.debug("invalid argument: --area {0} - expected format: (long,lat),(long,lat)".format(args["area"],))
+		return lambda a: True 
+	lats.sort()
+	longs.sort()
+	logger.debug("{lats} {longs}".format(**locals()))
+	def filter_flight(fjson) :
+		no=[]
+		for c in fjson["geometry"]["coordinates"] :
+			if (c[1]>=lats[0] and c[1]<=lats[1]) and (c[0]>=longs[0] and c[0]<=longs[1]) :
+				return True
+			else :
+				no.append("%s" % c)
+		logger.debug(" ".join(no[:10]))
+		return False
+	return filter_flight 
+
+		
+
 
 
 if __name__== "__main__" :
@@ -244,6 +272,7 @@ if __name__== "__main__" :
 		else :
 			o=args["flightfile"]
 		fs=[]
+		flightfilter=find_filter()
 		for (hcode,plane) in flights.items() :
 			props={}
 			for (k,v) in plane.items() :
@@ -271,10 +300,11 @@ if __name__== "__main__" :
 				flightjson= { "properties" : fprops, "id" : flightid, "type" : "Feature", 
 				               "geometry" : { "type" : "LineString", 
 				               "coordinates" : [ [float(a["lng"]),float(a["lat"])] for a in flight] }  }
-				fs.append(flightjson)
+				if flightfilter(flightjson) :
+					fs.append(flightjson)
 		# simplejson.dump(fs,o)
 		logger.info("%s flights recorded to %s" % (len(fs),args["flightfile"]))
-		if args["flightdb"] or args["flightdocs"]:
+		if args["flightdocs"]:
 			dcs=map(lambda a :  { 		"start"     : { "time" : a["properties"]["starttime"].replace(" ","T"),
 														"alt"  : a["properties"].get("points",[{ 'alt' : None }])[0]["alt"],
 														"town" : a["properties"]["start"]["town"],
@@ -298,20 +328,7 @@ if __name__== "__main__" :
 										"type"      : a["properties"]["type"],
 										"datum"     : a["properties"]["starttime"][:10],
 										"id"        : a["id"] }, fs) # filter(lambda a: a["properties"].get("points",False),fs))
-			if args["flightdb"] :
-				db=couchdb.Server()[args["flightdb"]]
-				for r in dcs :
-					doc=db.get(r["id"])
-					if doc is None :
-						doc=r
-					else :
-						doc.update(r)
-					try :
-						db[r["id"]]=doc
-					except Exception, e:
-						logger.error("Update %s failed (%s)" % (r["id"],e))
-				logger.info("%s flights saved to db %s" % (len(dcs),args["flightdb"]))
-			elif args["flightdocs"] :
+			if args["flightdocs"] :
 				if args["flightdocs"]=="-" :
 					fdof=sys.stdout
 				else :
