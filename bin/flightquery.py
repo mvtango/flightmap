@@ -91,7 +91,7 @@ def seek_pos(st) :
 
 # output_fields=["fn","rn","time","lat","lng","head","speed","alt","reg"]
 
-output_fields=["time", "reg","type","lat","lng","alt","speed","head","flight","radar"]
+output_fields=["time", "reg","type","lat","lng","alt","speed","head","flight","radar","fcode","fair","tair"]
 output_base="raw/extracted"
 
 
