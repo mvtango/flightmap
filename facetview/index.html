@@ -167,7 +167,7 @@ jQuery(document).ready(function($) {
 		{"field" : "reg", "pre" : "<b>","post" : "</b> "},
 		{"field" : "start.town", "post" : " - "},
 		{"field" : "end.town" },
-        {"field" : "duration", "post" : "h.", "pre" : " in "},
+        	{"field" : "duration", "post" : "h.", "pre" : " in "},
 
 		],
     
@@ -273,7 +273,7 @@ jQuery(document).ready(function($) {
 	<%= record.datum %>
 	</td>
 	<td>
-	        <a href="./?source={%22query%22:{%22bool%22:{%22must%22:[{%22term%22:{%22reg%22:%22<%= record.reg %>%22}}]}},%22size%22:20,%22sort%22:[{%22start.time%22:{%22order%22:%22desc%22}}]} "><b style="display:inline-block; width: 50%" title="<%= record.reg ? '' : 'No registration. ' %> <%= record.type ? 'Type '+record.type+' ' : '' %> <%= record.flight ? 'Flight '+record.flight+' ' : '' %>  <%= record.radar ? 'Radar '+record.radar+' ' : '' %> ID <%= record.hex %>"><%= record.reg ? record.reg : '[' +record.hex+']' %> </b></a><%= record.reg ? '<a class="btn btn-mini" target="_blank" href="http://www.planespotters.net/search.php?q='+record.reg.replace("+","%2B")+'"><i class="icon icon-plane"></i></a>' : '' %>
+	        <a id-data="./?source={%22query%22:{%22bool%22:{%22must%22:[{%22term%22:{%22reg%22:%22<%= record.reg %>%22}}]}},%22size%22:20,%22sort%22:[{%22start.time%22:{%22order%22:%22desc%22}}]} "><b style="display:inline-block; width: 50%" title="<%= record.reg ? '' : 'No registration. ' %> <%= record.type ? 'Type '+record.type+' ' : '' %> <%= record.flight ? 'Flight '+record.flight+' ' : '' %>  <%= record.radar ? 'Radar '+record.radar+' ' : '' %> ID <%= record.hex %>"><%= record.reg ? record.reg : '[' +record.hex+']' %> </b></a><%= record.reg ? '<a class="btn btn-mini" target="_blank" href="http://www.planespotters.net/search.php?q='+record.reg.replace("+","%2B")+'"><i class="icon icon-plane"></i></a>' : '' %>
     </td>
     <td>
 	<span title="<%= record.start.speed %> mph / <%= Math.floor(record.start.dist+0.5) %> km / <%= record.start.alt %> ft" class="airport start <%= ((record.duration<0.3) || (record.start.alt>3000) || (record.start.dist > 9)) ? "far" : "near" %>"> 
