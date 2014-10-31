@@ -17,6 +17,7 @@
   <script type="text/javascript" src="jquery.facetview.js"></script>
   <script type="text/javascript" src="vendor/underscore/underscore.min.js"></script>
   <script type="text/javascript" src="vendor/mapbox/v1.3.1/mapbox.js"></script>
+  <script type="text/javascript" src="vendor/sparkline/jquery.sparkline.min.js"></script>
   <link href="vendor/mapbox/v1.3.1/mapbox.css" rel="stylesheet" />
  
   <link rel="stylesheet" href="css/facetview.css">
@@ -54,6 +55,13 @@ jQuery(document).ready(function($) {
   //$("#fmap").hide();	
   var map = L.mapbox.map($('#fmap')[0], 'mvtango.map-94e5xnqh').setView([50, 15], 7);
 
+  function momarker() {
+	if ((typeof window._marker) == "undefined") {
+		window._marker=L.marker(map.getCenter()).addTo(map);
+	}
+	return window._marker;
+  }
+
   function draw_route(t) {
 	var markerLayer;
 	var $t=$(t);
@@ -62,11 +70,25 @@ jQuery(document).ready(function($) {
 	if ($t.is(":checked")) {  
 	   if (typeof cl.layer== "undefined") {
 		   cl.layer=L.mapbox.markerLayer(routes[e].route);
-       }
+       	   }
 	   cl.mapped=true;
 	   disable_map_buttons(false);
 	   map.addLayer(cl.layer);
 	   window.last_route=cl;
+	   heights=[]; 
+	   $(cl.route.coordinates).each(function(i,e) {
+		heights.push(e[0]);
+	   });
+	   $("#fprofile").sparkline(heights,{ width: "100%", height: "100px", tooltipFormatter: function(s,o,f) {
+		  return JSON.stringify(cl.route.coordinates[f.x]);
+		} 
+	   }).bind('sparklineRegionChange',function(ev) {
+		var sparkline = ev.sparklines[0];
+        	var region = sparkline.getCurrentRegionFields();
+		var coordinates=cl.route.coordinates[region.x];
+		momarker().setLatLng(new L.LatLng(coordinates[1],coordinates[0]));
+	   });
+
 	   // map.fitBounds(cl.layer);
 	} else {
 	   cl.mapped=false;
@@ -253,13 +275,14 @@ jQuery(document).ready(function($) {
     <div class="row">
 		<div class="span12">
 			<div id="fmap" style="width:100%; height: 300px;"></div>
+		        <div id="fprofile" style="margin-top: 10px; margin-bottom: 1px; width:100%; height: 100px"></div>
 			<br/>
 			<div style="float:right;" id="map-control" class="btn-group">
 				<button class="btn btn-small" onClick="display_all()"><i class="icon icon-resize-full"></i> Alle anzeigen</button>
 			    <button class="btn btn-small" onClick="display_last()"><i class="icon icon-resize-small"></i> Letzte anzeigen</button>
 			    <button class="btn btn-small" onClick="erase_all()"><i class="icon icon-remove"></i>Alle löschen</button>
-            </div>
-	</div>
+            		</div>
+		</div>
 	<div class="row">
 	 <div class="span12"><br/></div>
 	</div>
