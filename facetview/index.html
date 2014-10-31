@@ -62,6 +62,30 @@ jQuery(document).ready(function($) {
 	return window._marker;
   }
 
+  function profile_route(id) {
+	var cl=routes[id];
+	if ((typeof cl)=="undefined") {
+	  $("#fprofile").sparkline();
+	  momarker().setOpacity(0);
+	  
+	} else {
+	 var heights=[]; 
+	 $(cl.profile).each(function(i,e) {
+		heights.push(e.a);
+	 });
+	 $("#fprofile").sparkline(heights,{ width: "100%", height: "100px", tooltipFormatter: function(s,o,f) {
+	   return JSON.stringify(cl.profile[f.x])+JSON.stringify(cl.route.coordinates[f.x]);
+ 	  } 
+	 }).bind('sparklineRegionChange',function(ev) {
+		var sparkline = ev.sparklines[0];
+        	var region = sparkline.getCurrentRegionFields();
+		var coordinates=cl.route.coordinates[region.x];
+		momarker().setLatLng(new L.LatLng(coordinates[1],coordinates[0]));
+	 });
+	 momarker().setOpacity(1);
+        }
+  }
+
   function draw_route(t) {
 	var markerLayer;
 	var $t=$(t);
@@ -74,26 +98,16 @@ jQuery(document).ready(function($) {
 	   cl.mapped=true;
 	   disable_map_buttons(false);
 	   map.addLayer(cl.layer);
-	   window.last_route=cl;
-	   heights=[]; 
-	   $(cl.route.coordinates).each(function(i,e) {
-		heights.push(e[0]);
-	   });
-	   $("#fprofile").sparkline(heights,{ width: "100%", height: "100px", tooltipFormatter: function(s,o,f) {
-		  return JSON.stringify(cl.route.coordinates[f.x]);
-		} 
-	   }).bind('sparklineRegionChange',function(ev) {
-		var sparkline = ev.sparklines[0];
-        	var region = sparkline.getCurrentRegionFields();
-		var coordinates=cl.route.coordinates[region.x];
-		momarker().setLatLng(new L.LatLng(coordinates[1],coordinates[0]));
-	   });
-
+  	   window.last_route=cl;
+	   profile_route(e);
 	   // map.fitBounds(cl.layer);
 	} else {
 	   cl.mapped=false;
 	   map.removeLayer(cl.layer);
 	   disable_map_buttons();
+	   if (cl==window.last_route) {
+           	profile_route();
+	   } 
 	}
 	display_all();
   }
@@ -136,6 +150,7 @@ jQuery(document).ready(function($) {
     }
     $('input[type="checkbox"]:checked').prop('checked',false);
     disable_map_buttons(true);
+    profile_route();
    }
     
   window.erase_all=erase_all;
@@ -314,7 +329,7 @@ jQuery(document).ready(function($) {
 	<td><input type="checkbox" id="<%= record.id %>" onClick="draw_route(this)" /><i class="icon icon-map-marker"></i>
 	</td>
 </tr>
-<% if (typeof routes[record.id] == "undefined") { routes[record.id]={ 'route' : record.route, 'mapped' : false } }; %>
+<% if (typeof routes[record.id] == "undefined") { routes[record.id]={ 'route' : record.route, 'mapped' : false, 'profile' : record.profile } }; %>
 </div>
 </script>   
 
