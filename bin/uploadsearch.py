@@ -1,22 +1,23 @@
-from pyelasticsearch import ElasticSearch
+from elasticsearch import Elasticsearch,helpers
 import simplejson,sys
+import pprint 
 
-s=ElasticSearch("http://localhost:9200")
+s=Elasticsearch("http://localhost:9200")
 
 if "init" in sys.argv :
 	try :
-		s.delete_index("flights");
+		s.indices.delete("flights");
 	except Exception, e:
 		print e
 	try :
-		s.create_index("flights")
+		s.indices.create("flights")
 	except Exception, e:
-		print e
+		print e 
 	else :	
 		print "Created flights"
 
 
-	s.put_mapping("flights","flight",simplejson.loads('{"flight":{"properties":{"datum":{"type":"string","index":"not_analyzed","omit_norms":true,"index_options":"docs"},"type": { "type": "string", "index" : "not_analyzed" }, "duration":{"type":"double"},"end":{"properties":{"alt":{"type":"integer"},"dist":{"type":"float"},"speed":{"type":"integer"},"time":{"type":"date","format":"dateOptionalTime"},"town":{"type":"string","analyzer":"keyword"},"country":{"type":"string","analyzer":"keyword"}}},"flight":{"type":"string","store":true,"analyzer":"keyword"},"hex":{"type":"string","store":true,"analyzer":"keyword"},"id":{"type":"string","store":true},"radar":{"type":"string","store":true,"analyzer":"keyword"},"reg":{"type":"string","store":true,"analyzer":"keyword"},"route":{"properties":{"coordinates":{"type":"double"},"type":{"type":"string"}}},"start":{"properties":{"alt":{"type":"integer"},"dist":{"type":"float"},"speed":{"type":"integer"},"time":{"type":"date","format":"dateOptionalTime"},"town":{"type":"string","analyzer":"keyword"},"country":{"type":"string","analyzer":"keyword"}}}}}}'))
+	s.indices.put_mapping(index="flights",doc_type="flight",body=simplejson.loads('{"flight":{"properties":{"datum":{"type":"string","index":"not_analyzed","omit_norms":true,"index_options":"docs"},"type": { "type": "string", "index" : "not_analyzed" }, "duration":{"type":"double"},"end":{"properties":{"alt":{"type":"integer"},"dist":{"type":"float"},"speed":{"type":"integer"},"time":{"type":"date","format":"dateOptionalTime"},"town":{"type":"string","analyzer":"keyword"},"country":{"type":"string","analyzer":"keyword"}}},"flight":{"type":"string","store":true,"analyzer":"keyword"},"hex":{"type":"string","store":true,"analyzer":"keyword"},"id":{"type":"string","store":true},"radar":{"type":"string","store":true,"analyzer":"keyword"},"reg":{"type":"string","store":true,"analyzer":"keyword"},"route":{"properties":{"coordinates":{"type":"double"},"type":{"type":"string"}}}, "profile" : {"properties":{"a":{"type":"long"},"h":{"type":"long"},"q":{"type":"string"},"s":{"type":"long"},"t":{"type":"date", "format" : "dateOptionalTime" }}}, "start":{"properties":{"alt":{"type":"integer"},"dist":{"type":"float"},"speed":{"type":"integer"},"time":{"type":"date","format":"dateOptionalTime"},"town":{"type":"string","analyzer":"keyword"},"country":{"type":"string","analyzer":"keyword"}}}}}}'))
 
 
 
@@ -31,12 +32,19 @@ def makets(a) :
     return a
 
 
+def docs_iterator(a) :
+	for s in a :
+		a= { "_source" : s, "_index" : "flights", "_type" : "flight", "_id" : s["id"], "_op_type" : "index" }
+		yield a
+
 
 d=simplejson.load(sys.stdin)
-chunksize=50
+import pprint
+chunksize=1
 print "%s documents" % (len(d),)
 for i in xrange(0,len(d),chunksize) :
-	s.bulk_index("flights","flight",d[i:i+chunksize])	
-	print "inserted %s starting from %s" % (chunksize,i)
+	endi=min([i+chunksize,len(d)])
+	r=helpers.bulk(s,docs_iterator(d[i:endi]))
+	print "inserted %s starting from %s [%s]" % (endi,i,repr(r))
 
 

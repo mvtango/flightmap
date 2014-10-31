@@ -94,7 +94,7 @@ def map_rec(rec,where="") :
 		except KeyError :
 			errors.append("no '%s'" % (ic,))
 
-	rec["stime"]=datetime.datetime.fromtimestamp(rec["stamp"]).strftime('%Y-%m-%d %H:%M:%S')
+	rec["stime"]=datetime.datetime.fromtimestamp(rec["stamp"]).strftime('%Y-%m-%dT%H:%M:%S')
 	if errors :
 		logger.error("%s errors: %s in %s" % (len(errors),",".join(errors),repr(rec)))
 	return rec
@@ -205,15 +205,12 @@ def find_filter() :
 		return lambda a: True 
 	lats.sort()
 	longs.sort()
-	logger.debug("{lats} {longs}".format(**locals()))
+	# logger.debug("{lats} {longs}".format(**locals()))
 	def filter_flight(fjson) :
 		no=[]
 		for c in fjson["geometry"]["coordinates"] :
 			if (c[1]>=lats[0] and c[1]<=lats[1]) and (c[0]>=longs[0] and c[0]<=longs[1]) :
 				return True
-			else :
-				no.append("%s" % c)
-		logger.debug(" ".join(no[:10]))
 		return False
 	return filter_flight 
 
@@ -299,7 +296,10 @@ if __name__== "__main__" :
 				#logger.debug("FPROPS: %s" % pprint.pformat(fprops))
 				flightjson= { "properties" : fprops, "id" : flightid, "type" : "Feature", 
 				               "geometry" : { "type" : "LineString", 
-				               "coordinates" : [ [float(a["lng"]),float(a["lat"])] for a in flight] }  }
+				               "coordinates" : [ [float(a["lng"]),float(a["lat"])] for a in flight] ,
+						},
+					       "profile"     : [ dict(s=a["speed"],a=a["alt"],h=a["head"],t=a["stime"].replace(" ","T"),q=a["squawk"]) for a in flight ],
+  					    }
 				if flightfilter(flightjson) :
 					fs.append(flightjson)
 		# simplejson.dump(fs,o)
@@ -327,6 +327,7 @@ if __name__== "__main__" :
 										"hex"       : a["properties"]["hex"],
 										"type"      : a["properties"]["type"],
 										"datum"     : a["properties"]["starttime"][:10],
+										"profile"   : a["profile"],
 										"id"        : a["id"] }, fs) # filter(lambda a: a["properties"].get("points",False),fs))
 			if args["flightdocs"] :
 				if args["flightdocs"]=="-" :
