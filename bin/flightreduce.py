@@ -206,11 +206,9 @@ def find_filter() :
 	lats.sort()
 	longs.sort()
 	# logger.debug("{lats} {longs}".format(**locals()))
-	def filter_flight(fjson) :
-		no=[]
-		for c in fjson["geometry"]["coordinates"] :
-			if (c[1]>=lats[0] and c[1]<=lats[1]) and (c[0]>=longs[0] and c[0]<=longs[1]) :
-				return True
+	def filter_flight(r) :
+		if (float(r["lat"])>=lats[0] and float(r["lat"])<=lats[1]) and (float(r["lng"])>=longs[0] and float(r["lng"])<=longs[1]) :
+			return True
 		return False
 	return filter_flight 
 
@@ -237,6 +235,7 @@ if __name__== "__main__" :
 		args["infiles"]=[os.path.join(args["basedir"],a) for a in available if ((a>args["after"]) and (a[:len(args["before"])]<=args["before"]))]
 		logger.debug("%s files selected from %s in range [%s,%s]" % (len(args["infiles"]),args["basedir"],args["after"],args["before"]))
 	rect=0
+	flightfilter=find_filter()
 	for fn in args["infiles"] :
 		if args["listfiles"] :
 			logger.debug("selected: %s" % fn)
@@ -251,12 +250,13 @@ if __name__== "__main__" :
 				recc=recc+1
 				rect=rect+1
 				if (recc % 1000000)==0 :
-					logger.info("%s:%s Mio. records" % (fn,recc/1000000))
+					logger.info("%s:%s Mio. records %s flights" % (fn,recc/1000000,len(flights.keys())))
 				if args["registration"] :
 					if not rec["reg"][:len(args["registration"])]==args["registration"] :
 						continue
 				map_rec(rec)
-				push_flight(rec)
+				if flightfilter(rec) :
+					push_flight(rec)
 			except Exception,e :
 				logger.error(traceback.format_exc())
 				logger.error("error %s for %s (#%s)" % (e,pprint.pformat(rec),recc))
@@ -269,7 +269,7 @@ if __name__== "__main__" :
 		else :
 			o=args["flightfile"]
 		fs=[]
-		flightfilter=find_filter()
+		logger.info("%s flights - recording to %s" % (len(flights.items()),args["flightfile"]))
 		for (hcode,plane) in flights.items() :
 			props={}
 			for (k,v) in plane.items() :
@@ -300,10 +300,8 @@ if __name__== "__main__" :
 						},
 					       "profile"     : [ dict(s=a["speed"],a=a["alt"],h=a["head"],t=a["stime"].replace(" ","T"),q=a["squawk"]) for a in flight ],
   					    }
-				if flightfilter(flightjson) :
-					fs.append(flightjson)
+				fs.append(flightjson)
 		# simplejson.dump(fs,o)
-		logger.info("%s flights recorded to %s" % (len(fs),args["flightfile"]))
 		if args["flightdocs"]:
 			dcs=map(lambda a :  { 		"start"     : { "time" : a["properties"]["starttime"].replace(" ","T"),
 														"alt"  : a["properties"].get("points",[{ 'alt' : None }])[0]["alt"],
