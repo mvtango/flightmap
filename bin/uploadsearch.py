@@ -40,7 +40,7 @@ def docs_iterator(a) :
 
 d=simplejson.load(sys.stdin)
 import pprint
-chunksize=1
+chunksize=30
 print "%s documents" % (len(d),)
 for i in xrange(0,len(d),chunksize) :
 	endi=min([i+chunksize,len(d)])
