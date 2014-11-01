@@ -36,19 +36,22 @@
   </style>
 
   <script type="text/javascript">
+  window.jsstyle={ highlight : { color: "#0088cc", fill: "#00AAEE" },
+		   accent : { color: "#004466" }
+
+		 };
+
 jQuery(document).ready(function($) {
 	
   var template={};
-  $("script").each(function(i,e) {
+  $('script[type="text/template"]').each(function(i,e) {
 	var $e=$(e);
-	if ($e.attr("type")=="text/template") {
 		try {
 			template[$e.attr("id")]=_.template($e.html());
 			// console.log("Bingo "+$e.html());
 		} catch(err) {
 				console.error("Template error '"+err+"'"+$e.attr("id")+ " "+$e.html())
 		}
-	}	
   });
   window.template=template; 
 	
@@ -69,12 +72,23 @@ jQuery(document).ready(function($) {
 	  momarker().setOpacity(0);
 	  
 	} else {
-	 var heights=[]; 
+	 var heights=[],speeds=[]; 
 	 $(cl.profile).each(function(i,e) {
 		heights.push(e.a);
+		speeds.push(e.s)
 	 });
-	 $("#fprofile").sparkline(heights,{ width: "100%", height: "100px", tooltipFormatter: function(s,o,f) {
-	   return JSON.stringify(cl.profile[f.x])+JSON.stringify(cl.route.coordinates[f.x]);
+	 $("#fprofile").sparkline(heights,{ width: "100%", 
+					   height: "100px", 
+				           lineColor: jsstyle.highlight.color,
+					   fillColor: jsstyle.highlight.fillColor,
+					   highlightLineColor : jsstyle.accent.color,
+					   chartRangeMin: 0,
+					   spotColor: false, minSpotColor: false, maxSpotColor: false,
+					   highlightSpotColor: jsstyle.accent.color,
+	 tooltipFormatter: function(s,o,f) {
+	   var p=cl.profile[f.x];
+	   var c=cl.route.coordinates[f.x];
+	   return template.tooltipTemplate({profile: p, coordinates: c, json: JSON.stringify(p)} )
  	  } 
 	 }).bind('sparklineRegionChange',function(ev) {
 		var sparkline = ev.sparklines[0];
@@ -82,6 +96,17 @@ jQuery(document).ready(function($) {
 		var coordinates=cl.route.coordinates[region.x];
 		momarker().setLatLng(new L.LatLng(coordinates[1],coordinates[0]));
 	 });
+	 $("#fprofile").sparkline(speeds, { width: "100%",
+                                           height: "30px",
+                                           lineColor: "#909090",
+                                           fillColor: "#909090",
+					   chartRangeMin: 0,
+					   chartRangeMax: _.max(speeds)*2,
+                                           highlightLineColor : false,
+                                           spotColor: false, minSpotColor: false, maxSpotColor: false,
+                                           highlightSpotColor: false,
+					   composite: true
+	 })
 	 momarker().setOpacity(1);
         }
   }
@@ -93,7 +118,7 @@ jQuery(document).ready(function($) {
 	cl=routes[e];
 	if ($t.is(":checked")) {  
 	   if (typeof cl.layer== "undefined") {
-		   cl.layer=L.mapbox.markerLayer(routes[e].route);
+		   cl.layer=L.mapbox.markerLayer(routes[e].route).setStyle({ color: jsstyle.highlight.color });
        	   }
 	   cl.mapped=true;
 	   disable_map_buttons(false);
@@ -309,6 +334,10 @@ jQuery(document).ready(function($) {
    <p>Made with <a href="https://github.com/okfn/facetview">facetview</a> and <a href="http://www.elasticsearch.org/‎">elasticsearch</a>.</p>
   </footer>
 </div>
+<script id="tooltipTemplate" type="text/template">
+	<div style="font-size:150%"><%= profile.a %> ft <%= profile.s %> mph</div>
+        <div><strong><%= profile.t %></strong> (<%= coordinates[0] %>,<%= coordinates[1] %>)</div>
+</script>
 <script id="resultTemplate" type="text/template">
 <tr><td>
 	<%= record.datum %>
