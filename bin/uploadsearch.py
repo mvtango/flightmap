@@ -38,13 +38,19 @@ def docs_iterator(a) :
 		yield a
 
 
-d=simplejson.load(sys.stdin)
-import pprint
-chunksize=30
-print "%s documents" % (len(d),)
-for i in xrange(0,len(d),chunksize) :
-	endi=min([i+chunksize,len(d)])
-	r=helpers.bulk(s,docs_iterator(d[i:endi]))
-	print "inserted %s starting from %s [%s]" % (endi,i,repr(r))
+if __name__=="__main__" :
+    import pprint
+    chunksize=30
+    b=[]
+    for l in sys.stdin.readlines() :
+        b.append(json.loads(l))
+        if len(b)==chunksize :
+            r=helpers.bulk(s,docs_iterator(b))
+            print "{0} inserted: {1}".format(len(b),repr(r))
+            b=[]
+    if len(b) :
+        r=helpers.bulk(s,docs_iterator(b))
+        print "{0} inserted: {1}".format(len(b),repr(r))
+
 
 

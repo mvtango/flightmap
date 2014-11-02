@@ -61,7 +61,7 @@ parser.add_argument('--flightgap', action="store",help="start a new flight after
 parser.add_argument('--flightfile', action="store",help="output file for flight geoJSON, default: stdout", default=sys.stdout)
 parser.add_argument('--input_delimiter', action="store",help="delimiter character for input file(s), default is '<tab>'",default="\t")
 parser.add_argument('--flightdocs', action="store",help="json docs file", default=None)
-parser.add_argument('--fieldnames', action="store",help="fieldname sequence, options: %s" % ",".join(fieldnames.keys()), default="old")
+parser.add_argument('--fieldnames', action="store",help="fieldname sequence, options: %s" % ",".join(fieldnames.keys()), default="new")
 parser.add_argument('--area', action="store",help="overflown area, format: (long,lat),(long,lat) the two points are endpoints of a diagonal that marks the requested area" , default="")
 
 
@@ -138,6 +138,7 @@ def seek_pos(st) :
 
 already={  }
 flights={ }
+flight_output=False
 
 def test_threshold(rec,threshold={},output=None,flights=False) :
 		#logging.debug("Testing %s" % repr(rec))
@@ -170,24 +171,44 @@ def test_threshold(rec,threshold={},output=None,flights=False) :
 		recorded["silenced"]=rec
 		return False
 
+def do_output(obj) :
+    if flight_output :
+        if flightfilter(obj) :
+            logger.debug("{0} writing {obj[id]}:{obj[duration]} {obj[flight]}".format(len(flights.keys()),**locals()))
+            flight_output.write("%s\n" % simplejson.dumps(obj))
+
+
 def push_flight(rec,new=False) :
 	key=rec["hex"]
 	sec=int(args["flightgap"])*60
 	point={}
-	for k in ("lat","lng","alt","head","speed","stamp","stime","reg","squawk","radar") :
+        finfo={}
+	for k in ("lat","lng","alt","head","speed","stamp","stime","squawk") :
+        #""" per point data """
 		point[k]=rec[k]
+	for k in ("reg","hex","type","radar","fair","tair","fcode") :
+        #""" per flight segment data """
+		finfo[k]=rec.get(k,"")
 	if not key in flights :
 		info={ "flights" : [ [point] ] }
-		for k in ("reg","hex","type","radar","fair","tair","fcode") :
-			info[k]=rec.get(k,"")
+                info.update(finfo)
 		flights[key]=info
+                logger.debug("{point[stime]}: {key} {info[fair]}-{info[tair]} {info[fcode]} first recorded flight".format(**locals()))
 	else :
 		plane=flights[key]
-		elapsed=(point["stamp"]-plane["flights"][-1][-1]["stamp"])
+                if len(plane["flights"])>0 :
+		    elapsed=(point["stamp"]-plane["flights"][-1][-1]["stamp"])
+                else :
+                    elapsed=sec+1
 		# logger.info("Delta: %s < %s" % (elapsed,sec))
 		if elapsed>sec :
 			plane["flights"].append([point])
-			# logger.info("New flight #%s" % len(plane["flights"]))
+			logger.info("{point[stime]}: {key} starting flight #{0} after {elapsed} sec.".format(len(plane["flights"]),**locals()))
+                        if len(plane["flights"]) > 1:
+                            lastone=pop_flight(plane)
+                            if lastone :
+                                do_output(lastone)
+                        plane.update(finfo)
 		else :
 			plane["flights"][-1].append(point)
 			
@@ -206,15 +227,78 @@ def find_filter() :
 	lats.sort()
 	longs.sort()
 	# logger.debug("{lats} {longs}".format(**locals()))
-	def filter_flight(r) :
-		if (float(r["lat"])>=lats[0] and float(r["lat"])<=lats[1]) and (float(r["lng"])>=longs[0] and float(r["lng"])<=longs[1]) :
+	def filter_flight(f) :
+                for r in f["route"]["coordinates"] :
+		    if (float(r[1])>=lats[0] and float(r[1])<=lats[1]) and (float(r[0])>=longs[0] and float(r[0])<=longs[1]) :
 			return True
 		return False
 	return filter_flight 
 
-		
+def pop_flight(plane) :
+    """ consumes plane["flights"][0] and returns json """
+    if len(plane["flights"])==0 or len(plane["flights"][0])==0:
+        return None
+    props={}
+    for (k,v) in plane.items() :
+        if type(v) == type("") :
+            props[k]=v 
+    flight=plane["flights"][0]
+    flight.sort(lambda a,b: cmp(a["stamp"],b["stamp"]))
+    fprops=copy.copy(props)
+    fprops["starttime"]=flight[0]["stime"]
+    fprops["endtime"]=flight[-1]["stime"]
+    fprops["start"]=nearest_airport(float(flight[0]["lng"]),float(flight[0]["lat"]))[0]
+    fprops["start"]["airport"]=fprops["fair"]
+    fprops["start"]["point"]=flight[0]
+    fprops["end"]=nearest_airport(float(flight[-1]["lng"]),float(flight[-1]["lat"]))[0]			
+    fprops["end"]["point"]=flight[-1]
+    fprops["end"]["airport"]=fprops["tair"]
+    del fprops["tair"]
+    del fprops["fair"]
+    fprops["duration"]=flight[-1]["stamp"]-flight[0]["stamp"]
+    fprops["alt"]=[ a["alt"] for a in flight ]
+    fprops["points"]=[ p for p in flight ]
+    flightid="%s-%s" % (plane["hex"],flight[0]["stime"].replace(" ",""))
+    #logger.debug("FPROPS: %s" % pprint.pformat(fprops))
+    flightjson= { "properties" : fprops, "id" : flightid, "type" : "Feature", 
+                  "geometry" : { "type" : "LineString", 
+                                 "coordinates" : [ [float(a["lng"]),float(a["lat"])] for a in flight] ,
+                               },
+                  "profile"     : [ dict(s=a["speed"],a=a["alt"],h=a["head"],t=a["stime"].replace(" ","T"),q=a["squawk"]) for a in flight ],
+    }
+    dcs=map(lambda a :  { 		"start"     : { "time" : a["properties"]["starttime"].replace(" ","T"),
+                                                                                "alt"  : a["properties"].get("points",[{ 'alt' : None }])[0]["alt"],
+                                                                                "town" : a["properties"]["start"]["town"],
+                                                                                "country" : a["properties"]["start"]["country"],
+                                                                                "dist" : a["properties"]["start"]["distance"],
+                                                                                "speed": a["properties"].get("points",[{ 'speed' : None }])[0]["speed"],
+                                                                                "airport" : a["properties"].get("fair","")
+                                                                         },
+                                                "end"     : {   "time" : a["properties"]["endtime"].replace(" ","T"),
+                                                                                "alt"  : a["properties"].get("points",[{ 'alt' : None }])[0]["alt"],
+                                                                                "town" : a["properties"]["end"]["town"],
+                                                                                "country" : a["properties"]["end"]["country"],
+                                                                                "dist" : a["properties"]["end"]["distance"]	,
+                                                                                "speed": a["properties"].get("points",[{ 'speed' : None }])[-1]["speed"],
+                                                                                "airport" : a["properties"].get("tair","")
+                                                                         },
+                                                "route"     : a["geometry"],
+                                                "duration"  : float("%.2f" % (float(a["properties"]["duration"])/3600),),
+                                                "reg"		: a["properties"]["reg"],
+                                                "flight"    : a["properties"]["fcode"],
+                                                "radar"     : a["properties"]["radar"],
+                                                "hex"       : a["properties"]["hex"],
+                                                "type"      : a["properties"]["type"],
+                                                "datum"     : a["properties"]["starttime"][:10],
+                                                "profile"   : a["profile"],
+                                                "id"        : a["id"] }, [flightjson,])
+    plane["flights"]=plane["flights"][1:]
+    return(dcs[0])
+        
 
 
+
+flightfilter=lambda a: True
 
 if __name__== "__main__" :
 	import pprint
@@ -235,6 +319,11 @@ if __name__== "__main__" :
 		args["infiles"]=[os.path.join(args["basedir"],a) for a in available if ((a>args["after"]) and (a[:len(args["before"])]<=args["before"]))]
 		logger.debug("%s files selected from %s in range [%s,%s]" % (len(args["infiles"]),args["basedir"],args["after"],args["before"]))
 	rect=0
+	if args["flightdocs"] :
+		if args["flightdocs"]=="-" :
+			flight_output=sys.stdout
+		else :
+			flight_output=open(args["flightdocs"],"w")
 	flightfilter=find_filter()
 	for fn in args["infiles"] :
 		if args["listfiles"] :
@@ -255,84 +344,29 @@ if __name__== "__main__" :
 					if not rec["reg"][:len(args["registration"])]==args["registration"] :
 						continue
 				map_rec(rec)
-				if flightfilter(rec) :
-					push_flight(rec)
+                                if (recc % 1000000)==0 :
+	                                sec=2*int(args["flightgap"])*60
+                                        for (hcode,plane) in flights.items() :
+		                            elapsed=(rec["stamp"]-plane["flights"][0][-1]["stamp"])
+                                            if (elapsed>sec) :
+                                                h=pop_flight(plane)
+                                                if h :
+                                                    do_output(h)
+				push_flight(rec)
 			except Exception,e :
 				logger.error(traceback.format_exc())
 				logger.error("error %s for %s (#%s)" % (e,pprint.pformat(rec),recc))
 		inp.close()
 	elapsed=datetime.datetime.now()-startmoment
 	logger.info("%.2f Mio. records read in %s min %s sec." % (float(rect)/1000000,int(elapsed.seconds/60),elapsed.seconds % 60))
-	if args["flightgap"] :
-		if not hasattr(args["flightfile"],"write") :
-			o=open(args["flightfile"],"w") 
-		else :
-			o=args["flightfile"]
-		fs=[]
-		logger.info("%s flights - recording to %s" % (len(flights.items()),args["flightfile"]))
-		for (hcode,plane) in flights.items() :
-			props={}
-			for (k,v) in plane.items() :
-				if type(v) == type("") :
-					props[k]=v 
-			for flight in plane["flights"] :
-				fprops=copy.copy(props)
-				fprops["starttime"]=flight[0]["stime"]
-				fprops["endtime"]=flight[-1]["stime"]
-				fprops["start"]=nearest_airport(float(flight[0]["lng"]),float(flight[0]["lat"]))[0]
-				fprops["start"]["airport"]=fprops["fair"]
-				fprops["start"]["point"]=flight[0]
-				fprops["end"]=nearest_airport(float(flight[-1]["lng"]),float(flight[-1]["lat"]))[0]			
-				fprops["end"]["point"]=flight[-1]
-				fprops["end"]["airport"]=fprops["tair"]
-				del fprops["tair"]
-				del fprops["fair"]
-				fprops["duration"]=flight[-1]["stamp"]-flight[0]["stamp"]
-				fprops["alt"]=[ a["alt"] for a in flight ]
-				fprops["points"]=[ p for p in flight ]
-			
-
-				flightid="%s-%s" % (hcode,flight[0]["stime"].replace(" ",""))
-				#logger.debug("FPROPS: %s" % pprint.pformat(fprops))
-				flightjson= { "properties" : fprops, "id" : flightid, "type" : "Feature", 
-				               "geometry" : { "type" : "LineString", 
-				               "coordinates" : [ [float(a["lng"]),float(a["lat"])] for a in flight] ,
-						},
-					       "profile"     : [ dict(s=a["speed"],a=a["alt"],h=a["head"],t=a["stime"].replace(" ","T"),q=a["squawk"]) for a in flight ],
-  					    }
-				fs.append(flightjson)
-		# simplejson.dump(fs,o)
-		if args["flightdocs"]:
-			dcs=map(lambda a :  { 		"start"     : { "time" : a["properties"]["starttime"].replace(" ","T"),
-														"alt"  : a["properties"].get("points",[{ 'alt' : None }])[0]["alt"],
-														"town" : a["properties"]["start"]["town"],
-														"country" : a["properties"]["start"]["country"],
-														"dist" : a["properties"]["start"]["distance"],
-														"speed": a["properties"].get("points",[{ 'speed' : None }])[0]["speed"]
-													 },
-										"end"     : {   "time" : a["properties"]["endtime"].replace(" ","T"),
-														"alt"  : a["properties"].get("points",[{ 'alt' : None }])[0]["alt"],
-														"town" : a["properties"]["end"]["town"],
-														"country" : a["properties"]["end"]["country"],
-														"dist" : a["properties"]["end"]["distance"]	,
-														"speed": a["properties"].get("points",[{ 'speed' : None }])[-1]["speed"]
-													 },
-										"route"     : a["geometry"],
-										"duration"  : float("%.2f" % (float(a["properties"]["duration"])/3600),),
-										"reg"		: a["properties"]["reg"],
-										"flight"    : a["properties"]["reg"],
-										"radar"     : a["properties"]["radar"],
-										"hex"       : a["properties"]["hex"],
-										"type"      : a["properties"]["type"],
-										"datum"     : a["properties"]["starttime"][:10],
-										"profile"   : a["profile"],
-										"id"        : a["id"] }, fs) # filter(lambda a: a["properties"].get("points",False),fs))
-			if args["flightdocs"] :
-				if args["flightdocs"]=="-" :
-					fdof=sys.stdout
-				else :
-					fdof=open(args["flightdocs"],"w")
-				simplejson.dump(dcs,fdof)
-				logger.info("%s flights saved to to json doc list %s" % (len(dcs),args["flightdocs"]))
+	logger.info("%s flights - recording to %s" % (len(flights.items()),args["flightdocs"]))
+        fcount=0
+        for (hcode,plane) in flights.items() :
+            while True :
+                h=pop_flight(plane)
+                if h :
+                    do_output(h)
+                else :
+                    break
 
 				
