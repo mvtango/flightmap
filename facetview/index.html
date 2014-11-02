@@ -32,6 +32,12 @@
      span.far { background-image: none; }
      
      .popover-inner { width: 500px; } 
+	 .leaflet-div-icon {
+		background: #00aaee;
+		border: 1px solid #0088cc;
+		border-radius: 50%;
+		opacity: 0.5;
+	}
      
   </style>
 
@@ -60,7 +66,7 @@ jQuery(document).ready(function($) {
 
   function momarker() {
 	if ((typeof window._marker) == "undefined") {
-		window._marker=L.marker(map.getCenter()).addTo(map);
+		window._marker=L.marker(map.getCenter(),{ icon: L.divIcon() }).addTo(map);
 	}
 	return window._marker;
   }
@@ -83,6 +89,7 @@ jQuery(document).ready(function($) {
 					   fillColor: jsstyle.highlight.fillColor,
 					   highlightLineColor : jsstyle.accent.color,
 					   chartRangeMin: 0,
+					   spotRadius: 2,
 					   spotColor: false, minSpotColor: false, maxSpotColor: false,
 					   highlightSpotColor: jsstyle.accent.color,
 	 tooltipFormatter: function(s,o,f) {
@@ -94,20 +101,25 @@ jQuery(document).ready(function($) {
 		var sparkline = ev.sparklines[0];
         	var region = sparkline.getCurrentRegionFields();
 		var coordinates=cl.route.coordinates[region.x];
-		momarker().setLatLng(new L.LatLng(coordinates[1],coordinates[0]));
+		try {
+			momarker().setLatLng(new L.LatLng(coordinates[1],coordinates[0])).setOpacity(1);
+		} catch(e) {
+			momarker().setOpacity(0);
+		}
 	 });
 	 $("#fprofile").sparkline(speeds, { width: "100%",
                                            height: "30px",
-                                           lineColor: "#909090",
-                                           fillColor: "#909090",
+                                           lineColor: jsstyle.accent.color,
+                                           fillColor: false,
 					   chartRangeMin: 0,
 					   chartRangeMax: _.max(speeds)*2,
                                            highlightLineColor : false,
                                            spotColor: false, minSpotColor: false, maxSpotColor: false,
-                                           highlightSpotColor: false,
-					   composite: true
+					   spotRadius: 2,
+                                           highlightSpotColor: jsstyle.accent.color,
+					   composite: true,
+					   tooltipFormat: ""
 	 })
-	 momarker().setOpacity(1);
         }
   }
 
@@ -335,8 +347,11 @@ jQuery(document).ready(function($) {
   </footer>
 </div>
 <script id="tooltipTemplate" type="text/template">
-	<div style="font-size:150%"><%= profile.a %> ft <%= profile.s %> mph</div>
-        <div><strong><%= profile.t %></strong> (<%= coordinates[0] %>,<%= coordinates[1] %>)</div>
+	<div style="font-size:150%">altitude <%= profile.a %> ft </div>
+        <div><strong><%= profile.t %></strong><br/>
+	     [<%= coordinates[0] %>,<%= coordinates[1] %>]
+             <br/> heading <%= profile.h %> squelch <%= profile.q %></div>
+	<div style="font-size:150%">speed <%= profile.s %> mph</div>
 </script>
 <script id="resultTemplate" type="text/template">
 <tr><td>
