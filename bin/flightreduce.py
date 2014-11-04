@@ -253,8 +253,6 @@ def pop_flight(plane) :
     fprops["end"]=nearest_airport(float(flight[-1]["lng"]),float(flight[-1]["lat"]))[0]			
     fprops["end"]["point"]=flight[-1]
     fprops["end"]["airport"]=fprops["tair"]
-    del fprops["tair"]
-    del fprops["fair"]
     fprops["duration"]=flight[-1]["stamp"]-flight[0]["stamp"]
     fprops["alt"]=[ a["alt"] for a in flight ]
     fprops["points"]=[ p for p in flight ]

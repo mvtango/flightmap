@@ -1,5 +1,5 @@
 from elasticsearch import Elasticsearch,helpers
-import simplejson,sys
+import simplejson as json ,sys
 import pprint 
 
 s=Elasticsearch("http://localhost:9200")
@@ -17,7 +17,7 @@ if "init" in sys.argv :
 		print "Created flights"
 
 
-	s.indices.put_mapping(index="flights",doc_type="flight",body=simplejson.loads('{"flight":{"properties":{"datum":{"type":"string","index":"not_analyzed","omit_norms":true,"index_options":"docs"},"type": { "type": "string", "index" : "not_analyzed" }, "duration":{"type":"double"},"end":{"properties":{"alt":{"type":"integer"},"dist":{"type":"float"},"speed":{"type":"integer"},"time":{"type":"date","format":"dateOptionalTime"},"town":{"type":"string","analyzer":"keyword"},"country":{"type":"string","analyzer":"keyword"}}},"flight":{"type":"string","store":true,"analyzer":"keyword"},"hex":{"type":"string","store":true,"analyzer":"keyword"},"id":{"type":"string","store":true},"radar":{"type":"string","store":true,"analyzer":"keyword"},"reg":{"type":"string","store":true,"analyzer":"keyword"},"route":{"properties":{"coordinates":{"type":"double"},"type":{"type":"string"}}}, "profile" : {"properties":{"a":{"type":"long"},"h":{"type":"long"},"q":{"type":"string"},"s":{"type":"long"},"t":{"type":"date", "format" : "dateOptionalTime" }}}, "start":{"properties":{"alt":{"type":"integer"},"dist":{"type":"float"},"speed":{"type":"integer"},"time":{"type":"date","format":"dateOptionalTime"},"town":{"type":"string","analyzer":"keyword"},"country":{"type":"string","analyzer":"keyword"}}}}}}'))
+	s.indices.put_mapping(index="flights",doc_type="flight",body=json.loads('{"flight":{"properties":{"datum":{"type":"string","index":"not_analyzed","omit_norms":true,"index_options":"docs"},"type": { "type": "string", "index" : "not_analyzed" }, "duration":{"type":"double"},"end":{"properties":{"alt":{"type":"integer"},"dist":{"type":"float"},"speed":{"type":"integer"},"time":{"type":"date","format":"dateOptionalTime"},"town":{"type":"string","analyzer":"keyword"},"country":{"type":"string","analyzer":"keyword"}}},"flight":{"type":"string","store":true,"analyzer":"keyword"},"hex":{"type":"string","store":true,"analyzer":"keyword"},"id":{"type":"string","store":true},"radar":{"type":"string","store":true,"analyzer":"keyword"},"reg":{"type":"string","store":true,"analyzer":"keyword"},"route":{"properties":{"coordinates":{"type":"double"},"type":{"type":"string"}}}, "profile" : {"properties":{"a":{"type":"long"},"h":{"type":"long"},"q":{"type":"string"},"s":{"type":"long"},"t":{"type":"date", "format" : "dateOptionalTime" }}}, "start":{"properties":{"alt":{"type":"integer"},"dist":{"type":"float"},"speed":{"type":"integer"},"time":{"type":"date","format":"dateOptionalTime"},"town":{"type":"string","analyzer":"keyword"},"country":{"type":"string","analyzer":"keyword"}}}}}}'))
 
 
 
