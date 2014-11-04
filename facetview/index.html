@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>OpenDataCity Flugsuche</title>
+  <title>OpenDataCity FlightSearch</title>
 
   <script type="text/javascript" src="vendor/jquery/1.7.1/jquery-1.7.1.min.js"></script>
 
@@ -38,6 +38,7 @@
 		border-radius: 50%;
 		opacity: 0.5;
 	}
+     .nowrap { white-space: nowrap; }
      
   </style>
 
@@ -60,7 +61,7 @@ jQuery(document).ready(function($) {
 		}
   });
   window.template=template; 
-	
+
   //$("#fmap").hide();	
   var map = L.mapbox.map($('#fmap')[0], 'mvtango.map-94e5xnqh').setView([50, 15], 7);
 
@@ -286,6 +287,7 @@ jQuery(document).ready(function($) {
     });
     $('.facet-view-here').facetview(_data);
   });
+  $('input[class~="facetview_freetext"]').attr("placeholder","airport, town, country, flight");	
   
   $( "[title]" ).tooltip({ show: { delay: 4, duration: 100, }});
   disable_map_buttons();
@@ -305,9 +307,10 @@ jQuery(document).ready(function($) {
     <div class="container">
       <a class="brand" href="/flightmap/">
         <img src="img/odc-logo-small1.png" style="display: inline-block; height: 18px; float: left; vertical-align: baseline;"/>&nbsp;
-	Flugsuche
+	FlightSearch
       </a>
       <ul class="nav">
+	<li><a href="20141103-odc-flightsearch-cheatsheet.pdf" target="_blank">Cheat Sheet</a></li>
 	<!--
         <li><a href='./?source={"query":{"bool":{"must":[{"term":{"reg":"16+01"}}]}},"size":20,"sort":[{"start.time":{"order":"desc"}}]}'>Konrad Adenauer</a></li>
         <li><a href='./?source={"query":{"bool":{"must":[{"term":{"reg":"D-AZEM"}}]}},"size":20,"sort":[{"start.time":{"order":"desc"}}]}'>BND-Jet</a></li>
@@ -330,9 +333,9 @@ jQuery(document).ready(function($) {
 		        <div id="fprofile" style="margin-top: 10px; margin-bottom: 1px; width:100%; height: 100px"></div>
 			<br/>
 			<div style="float:right;" id="map-control" class="btn-group">
-				<button class="btn btn-small" onClick="display_all()"><i class="icon icon-resize-full"></i> Alle anzeigen</button>
-			    <button class="btn btn-small" onClick="display_last()"><i class="icon icon-resize-small"></i> Letzte anzeigen</button>
-			    <button class="btn btn-small" onClick="erase_all()"><i class="icon icon-remove"></i>Alle löschen</button>
+				<button class="btn btn-small" onClick="display_all()"><i class="icon icon-resize-full"></i> show all </button>
+			    <button class="btn btn-small" onClick="display_last()"><i class="icon icon-resize-small"></i> show last </button>
+			    <button class="btn btn-small" onClick="erase_all()"><i class="icon icon-remove"></i> empty map </button>
             		</div>
 		</div>
 	<div class="row">
@@ -350,30 +353,36 @@ jQuery(document).ready(function($) {
 	<div style="font-size:150%">altitude <%= profile.a %> ft </div>
         <div><strong><%= profile.t %></strong><br/>
 	     [<%= coordinates[0] %>,<%= coordinates[1] %>]
-             <br/> heading <%= profile.h %> squelch <%= profile.q %></div>
+             <br/> heading <%= profile.h %> transponder code <%= profile.q %></div>
 	<div style="font-size:150%">speed <%= profile.s %> mph</div>
 </script>
 <script id="resultTemplate" type="text/template">
 <tr><td>
 	<%= record.datum %>
 	</td>
-	<td>
-	        <a id-data="./?source={%22query%22:{%22bool%22:{%22must%22:[{%22term%22:{%22reg%22:%22<%= record.reg %>%22}}]}},%22size%22:20,%22sort%22:[{%22start.time%22:{%22order%22:%22desc%22}}]} "><b style="display:inline-block; width: 50%" title="<%= record.reg ? '' : 'No registration. ' %> <%= record.type ? 'Type '+record.type+' ' : '' %> <%= record.flight ? 'Flight '+record.flight+' ' : '' %>  <%= record.radar ? 'Radar '+record.radar+' ' : '' %> ID <%= record.hex %>"><%= record.reg ? record.reg : '[' +record.hex+']' %> </b></a><%= record.reg ? '<a class="btn btn-mini" target="_blank" href="http://www.planespotters.net/search.php?q='+record.reg.replace("+","%2B")+'"><i class="icon icon-plane"></i></a>' : '' %>
+	<td class="nowrap">
+	        <a href="./?source={%22query%22:{%22bool%22:{%22must%22:[{%22term%22:{%22reg%22:%22<%= record.reg %>%22}}]}},%22size%22:20,%22sort%22:[{%22start.time%22:{%22order%22:%22desc%22}}]} "><b style="display:inline-block; width: 50%" title="<%= record.reg ? 'Filter flights by '+record.reg : 'No registration. ' %> <%= record.type ? 'Type '+record.type+' ' : '' %> <%= record.radar ? 'Radar '+record.radar+' ' : '' %> Aircraft Address <%= record.hex %>"><%= record.reg ? record.reg : '[' +record.hex+']' %> </b></a><%= record.reg ? '&nbsp;&nbsp;<a title="link to planespotters.net" target="_blank" href="http://www.planespotters.net/search.php?q='+record.reg.replace("+","%2B")+'"><i class="icon icon-plane"></i></a>' : '' %>
     </td>
     <td>
 	<span title="<%= record.start.speed %> mph / <%= Math.floor(record.start.dist+0.5) %> km / <%= record.start.alt %> ft" class="airport start <%= ((record.duration<0.3) || (record.start.alt>3000) || (record.start.dist > 9)) ? "far" : "near" %>"> 
 	<%= record.start.town %><%= record.start.country ? ', ' + record.start.country : '' %>
 	</span> - <span  title="<%= record.end.speed %> mph / <%= Math.floor(record.end.dist+0.5) %> km / <%= record.end.alt %> ft" class="airport landing <%= ((record.duration<0.3) || (record.end.alt>3000) || (record.end.dist > 9)) ? "far" : "near" %>"> 
 	<%= record.end.town %><%= record.end.country ? ', ' + record.end.country : '' %>
+	</td>
+	<td>
+	<% if (record.flight) { %>
+	   <a href="http://de.flightaware.com/live/flight/<%= record.flight %>" target="_blank" title="flight <%= record.flight %> on flightaware.com "><%= record.flight %></a>
+	<% } %> 
+ 	   <%= record.start.airport ? record.start.airport : '' %> - <%= record.end.airport ? record.end.airport : '' %>
 	</span>
 	</td>
 	<td> 
-	<%= record.duration %> h.
+	<%= Math.floor(record.duration) %>h <%= Math.floor((record.duration-Math.floor(record.duration))*60) %>'
 	</td>
 	<td><input type="checkbox" id="<%= record.id %>" onClick="draw_route(this)" /><i class="icon icon-map-marker"></i>
 	</td>
 </tr>
-<% if (typeof routes[record.id] == "undefined") { routes[record.id]={ 'route' : record.route, 'mapped' : false, 'profile' : record.profile } }; %>
+<% if (typeof routes[record.id] == "undefined") { routes[record.id]={ 'record' : record, 'route' : record.route, 'mapped' : false, 'profile' : record.profile } }; %>
 </div>
 </script>   
 
