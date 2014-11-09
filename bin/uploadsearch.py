@@ -40,13 +40,15 @@ def docs_iterator(a) :
 
 if __name__=="__main__" :
     import pprint
-    chunksize=30
+    chunksize=1
+    count=0
     b=[]
     for l in sys.stdin.readlines() :
         b.append(json.loads(l))
         if len(b)==chunksize :
             r=helpers.bulk(s,docs_iterator(b))
-            print "{0} inserted: {1}".format(len(b),repr(r))
+            print "{0}-{1} inserted: {2}".format(count,count+len(b)-1,repr(r))
+            count=count+len(b)
             b=[]
     if len(b) :
         r=helpers.bulk(s,docs_iterator(b))
