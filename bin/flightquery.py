@@ -20,14 +20,13 @@ logger=logging.getLogger(__name__)
 
 
 
-fieldnames=["time","flight","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp","fair","tair","fcode","e1","e2","e3","e4"]
+fieldnames={ 'old' : ["time","flight","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp"],
+             'new' : ["time","flight","hex","lat","lng","head","alt","speed","squawk","radar","type","reg","stamp","fair","tair","fcode","e1","e2","e3","e4"]
+		   }
  
 bases={"filtered" : "raw/217.11.52.54/fly/filtered",
-       "full"     : "raw/217.11.52.54/fly/dumps", 
-       "server"   : "/home/michael/flightradar_scraper/dumps-jsonp-filtered/",
-       "server-old"   : "/home/michael/flightradar_scraper/filtered/",
-       "server-full"   : "/home/michael/flightradar_scraper/dumps-jsonp/",
-       "server-full-old"   : "/home/michael/flightradar_scraper/dumps/",
+       "full"     : "/home/opendatacity/flightmap/flightradar24/dumps-jsonp", 
+       "filtered"     : "/home/opendatacity/flightmap/flightradar24/dumps-jsonp-filtered", 
 	}
 
 parser = argparse.ArgumentParser(description="fd24 extractor", conflict_handler='resolve')
@@ -41,13 +40,13 @@ parser.add_argument('--registration','-r', action="append",help="search for flig
 parser.add_argument('--filename_template',action="store",help="filename template for matched records", default="raw/extracted/by-registration/reg-%(reg)s.csv")
 parser.add_argument('--after',action="store",help="files after Year-Month-Day (exclusive)", default="2012-07-01")
 parser.add_argument('--before',action="store",help="files before Year-Month-Day (exclusive)", default=datetime.datetime.now().strftime("%Y-%m-%d"))
-parser.add_argument('--basedir', action="store",help="base directory for selection, try %s" % ",".join(['"%s"' % a for a in bases.keys()]),default="raw/217.11.52.54/fly/filtered")
+parser.add_argument('--basedir', action="store",help="base directory for selection, try %s" % ",".join(['"%s"' % a for a in bases.keys()]),default="filtered")
 parser.add_argument('--output_delimiter', action="store",help="delimiter character for output file(s), default is ';'",default=";")
 parser.add_argument('--input_delimiter', action="store",help="delimiter character for input file(s), default is '<tab>'",default="\t")
 parser.add_argument('--find', action="store",help="find aircraft position, registration@year-month-day:hour:minute", default="")
-parser.add_argument('--near', action="store",help="find aircrafts near lat:lng see --near_factor for parameters", default="")
-parser.add_argument('--near_factor',action="store",help="set parameters, default is 0.1. Factor is calculated as the sum of the sqares of the lat and lng differences",type=float,default=.1)
 parser.add_argument('--copy',action="store_const",help="make output format = input format", default=0, const=1)
+parser.add_argument('--area', action="store",help="overflown area, format: (long,lat),(long,lat) the two points are endpoints of a diagonal that marks the requested area" , default="")
+parser.add_argument('--fieldnames', action="store",help="fieldname sequence, options: %s" % ",".join(fieldnames.keys()), default="new")
 
 
 args = vars(parser.parse_args())
@@ -59,6 +58,26 @@ from opener import f_open
 #		return bz2.BZ2File(a,"r")
 #	return open(a,"r")
 
+def find_filter() :
+	""" returns function if there is an area to filter, false otherwise """
+	if not args["area"] :
+		return lambda a: True
+	try :
+		area=re.split(r"[^0-9\.]+",args["area"])
+		assert len(area)==6
+		longs=[float(area[1]),float(area[3])]
+		lats=[float(area[2]),float(area[4])]	
+	except Exception, e:
+		logger.debug("invalid argument: --area {0} - expected format: (long,lat),(long,lat)".format(args["area"],))
+		return lambda a: True 
+	lats.sort()
+	longs.sort()
+	# logger.debug("{lats} {longs}".format(**locals()))
+	def filter_flight(r) :
+		if (float(r["lat"])>=lats[0] and float(r["lat"])<=lats[1]) and (float(r["lng"])>=longs[0] and float(r["lng"])<=longs[1]) :
+			return True
+		return False
+	return filter_flight 
 
 def seek_time(pot) :
 	minseek=pot-datetime.timedelta(minutes=1)
@@ -67,7 +86,7 @@ def seek_time(pot) :
 	f=[a for a in args["infiles"] if filesearch.search(a)] 
 	if f :
 		tf=f_open(f[0])
-		records=csv.DictReader(tf, fieldnames=fieldnames, delimiter=args["input_delimiter"])
+		records=csv.DictReader(tf, fieldnames=fieldnames[args["fieldnames"]], delimiter=args["input_delimiter"])
 		for rec in records :
 			if rec["time"]>minstamp :
 				return records
@@ -113,9 +132,7 @@ if __name__== "__main__" :
 		args["infiles"]=[os.path.join(args["basedir"],a) for a in available if ((a>args["after"]) and (a[:len(args["before"])]<=args["before"]))]
 		logger.debug("%s files selected from %s in range [%s,%s]" % (len(args["infiles"]),args["basedir"],args["after"],args["before"]))
 	if args["copy"] :
-		for an in ("delimiter",) :
-			args["output_%s" % an] =args["input_%s" % an ]
-		output_fields=fieldnames
+		output_fields=fieldnames[args["fieldnames"]]
 	if hasattr(args["output"],"write") :
 		off=args["output"]
 		output_message=False
@@ -129,14 +146,6 @@ if __name__== "__main__" :
 		else :
 			logger.info("%s - no position" % (args["find"]))
 		exit()
-	if args["near"] :
-		dlat,dlng=args["near"].split(":")
-		dlat=float(dlat)
-		dlng=float(dlng)
-		nearness=lambda rec : pow(float(rec["lat"])-dlat,2)+pow(float(rec["lng"])-dlng,2)
-		args["near_factor"]=pow(args["near_factor"],2)
-	else : 
-		nearness=False
 	if not args["by_registration"] :
 		off.write("%s\n" % args["output_delimiter"].join(output_fields))
 		outfile=csv.DictWriter(off,fieldnames=output_fields,delimiter=args["output_delimiter"],extrasaction="ignore")
@@ -145,6 +154,7 @@ if __name__== "__main__" :
 	rect=0 
 	reco=0
 	startmoment=datetime.datetime.now()
+	ffilter=find_filter()
 	for fn in args["infiles"] :
 		if args["listfiles"] :
 			logger.debug("selected: %s" % fn)
@@ -153,7 +163,7 @@ if __name__== "__main__" :
 		logger.debug("Opening %s for input " % fn)
 		inp=f_open(fn)
 		recc=0
-		records=csv.DictReader(inp, fieldnames=fieldnames, delimiter=args["input_delimiter"])
+		records=csv.DictReader(inp, fieldnames=fieldnames[args["fieldnames"]], delimiter=args["input_delimiter"])
 		for rec in records :
 			try :
 				recc=recc+1
@@ -171,10 +181,8 @@ if __name__== "__main__" :
 				if args["slower"] :
 					if int(rec["speed"])>=args["slower"] :
 						continue
-				if nearness :
-					nn=nearness(rec)
-					if (nn>args["near_factor"]) :
-						continue
+				if not ffilter(rec) :
+					continue
 				if (not rec["reg"] in already["reg"]) or (int(rec["stamp"])-already["reg"][rec["reg"]]>60*args["every"]) :
 						if "filename" in output_fields :
 							rec["filename"]=os.path.split(fn)[1]
