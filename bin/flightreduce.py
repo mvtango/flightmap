@@ -62,7 +62,8 @@ parser.add_argument('--flightfile', action="store",help="output file for flight 
 parser.add_argument('--input_delimiter', action="store",help="delimiter character for input file(s), default is '<tab>'",default="\t")
 parser.add_argument('--flightdocs', action="store",help="json docs file", default=None)
 parser.add_argument('--fieldnames', action="store",help="fieldname sequence, options: %s" % ",".join(fieldnames.keys()), default="new")
-parser.add_argument('--area', action="store",help="overflown area, format: (long,lat),(long,lat) the two points are endpoints of a diagonal that marks the requested area" , default="")
+parser.add_argument('--area', action="store",help="overflown area, format: (long,lat),(long,lat) the two points are endpoints of a diagonal that marks the requested area" , default=None)
+parser.add_argument('--strict', action="store_const",help="record only flight data within --area " , default=0, const=1)
 
 
 args = vars(parser.parse_args())
@@ -228,10 +229,17 @@ def find_filter() :
 	longs.sort()
 	# logger.debug("{lats} {longs}".format(**locals()))
 	def filter_flight(f) :
-                for r in f["route"]["coordinates"] :
-		    if (float(r[1])>=lats[0] and float(r[1])<=lats[1]) and (float(r[0])>=longs[0] and float(r[0])<=longs[1]) :
-			return True
-		return False
+		if "route" in f : # Flight JSON
+			for r in f["route"]["coordinates"] :
+			    if (float(r[1])>=lats[0] and float(r[1])<=lats[1]) and (float(r[0])>=longs[0] and float(r[0])<=longs[1]) :
+				return True
+			return False
+		else :
+			if "lat" in f and "lng" in f :
+			    if (float(f["lat"])>=lats[0] and float(f["lat"])<=lats[1]) and (float(f["lng"])>=longs[0] and float(f["lng"])<=longs[1]) :
+				return True
+			    return False
+		raise ValueError("Parameter must be flight or lat,lng object, was %s" % repr(f))
 	return filter_flight 
 
 def pop_flight(plane) :
@@ -345,11 +353,16 @@ if __name__== "__main__" :
                                 if (recc % 1000000)==0 :
 	                                sec=2*int(args["flightgap"])*60
                                         for (hcode,plane) in flights.items() :
-		                            elapsed=(rec["stamp"]-plane["flights"][0][-1]["stamp"])
+					    if len(plane["flights"])>0 :
+		                            	elapsed=(rec["stamp"]-plane["flights"][0][-1]["stamp"])
+					    else :
+						elapsed=0
                                             if (elapsed>sec) :
                                                 h=pop_flight(plane)
                                                 if h :
                                                     do_output(h)
+				if args["strict"] and args["area"] and not flightfilter(rec) :
+					continue
 				push_flight(rec)
 			except Exception,e :
 				logger.error(traceback.format_exc())
