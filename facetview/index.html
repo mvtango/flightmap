@@ -33,17 +33,21 @@
      
      .popover-inner { width: 500px; } 
 	 .leaflet-div-icon {
-		background: #00aaee;
-		border: 1px solid #0088cc;
+		width: 2px;
+		height: 2px;
+		background: #990000;
+		border: 1px solid #990000;
 		border-radius: 50%;
 		opacity: 0.5;
 	}
      .nowrap { white-space: nowrap; }
+     tr.datarow:hover { background-color: #F0E0E0}
      
   </style>
 
   <script type="text/javascript">
-  window.jsstyle={ highlight : { color: "#0088cc", fill: "#00AAEE" },
+  window.jsstyle={ highlight : { color: "#EE0000", fill: "#990000" } ,
+                   oldhighlight: { color: "#0088cc", fill: "#00AAEE" },
 		   accent : { color: "#004466" }
 
 		 };
@@ -67,7 +71,7 @@ jQuery(document).ready(function($) {
 
   function momarker() {
 	if ((typeof window._marker) == "undefined") {
-		window._marker=L.marker(map.getCenter(),{ icon: L.divIcon() }).addTo(map);
+		window._marker=L.marker(map.getCenter(),{ icon: L.divIcon() }).addTo(map); /* .setStyle(jsstyle.highlight); */
 	}
 	return window._marker;
   }
@@ -131,13 +135,23 @@ jQuery(document).ready(function($) {
 	cl=routes[e];
 	if ($t.is(":checked")) {  
 	   if (typeof cl.layer== "undefined") {
-		   cl.layer=L.mapbox.markerLayer(routes[e].route).setStyle({ color: jsstyle.highlight.color });
+		   var text=template.hoverinfoTemplate({record : cl.record });
+		   cl.layer=L.mapbox.markerLayer(routes[e].route);
+		   cl.layer.on("mouseover", function() {
+			this.setStyle({ color: "#990000" });
+			$("#hoverinfo").html(text).show();
+			this.bringToFront();
+	   		profile_route(e);
+		   }).on("mouseout", function() {
+			this.setStyle({ color: "#808080" });
+			$("#hoverinfo").html("").hide();
+			profile_route();
+		   }).setStyle({ color: "#808080" });
        	   }
 	   cl.mapped=true;
 	   disable_map_buttons(false);
 	   map.addLayer(cl.layer);
   	   window.last_route=cl;
-	   profile_route(e);
 	   // map.fitBounds(cl.layer);
 	} else {
 	   cl.mapped=false;
@@ -191,13 +205,34 @@ jQuery(document).ready(function($) {
     profile_route();
    }
     
+  function select_all() {
+	for (k in routes) {
+		cl=routes[k]
+		if (! cl.mapped) {
+			var cb=$("input[id='"+k+"']");
+			if (cb) {
+				cb.prop('checked',true);
+				try {
+					draw_route(cb);
+				} catch(ex) {
+					console.error(k+":"+ex);
+				}
+			}
+		}
+    }
+    $('input[type="checkbox"]:checked').prop('checked',true);
+    disable_map_buttons(true);
+   }
+
   window.erase_all=erase_all;
   window.display_last=display_last;
   window.display_all=display_all;
+  window.select_all=select_all;
   window.draw_route=draw_route;
   window.map=map;
   
   function disable_map_buttons(disabled) {
+	  return; /* disabled */ 
 	  if (typeof disabled == "undefined") {
 	    var disabled=true;
 	    for (k in routes) {
@@ -257,13 +292,31 @@ jQuery(document).ready(function($) {
 	],
     paging: {
       from: 0,
-      size: 20
+      size: 60
     },
     enable_rangeselect: true,
     post_search_callback: function() { 	
 						$("#facetview_results [title]" ).tooltip();
 						check_if_mapped();
-						},
+						$("tr.datarow").on("mouseover", function() {
+							var cb=$("input",$(this));
+							var id=cb.attr("id");
+							profile_route(id);
+							var r=routes[id];
+							if (r.mapped) {
+								r.layer.fire("mouseover");
+							}
+
+						}).on("mouseout",function() {
+							var cb=$("input",$(this));
+							var id=cb.attr("id");
+							profile_route();
+							var r=routes[id];
+							if (r.mapped) {
+								r.layer.fire("mouseout");
+							}
+						});
+				     },
 	pre_search_callback: function() { 	
 						$(".tooltip").hide();
 						var $n=$("#facetview_results");
@@ -330,12 +383,14 @@ jQuery(document).ready(function($) {
     </div> -->
     <div class="row">
 		<div class="span12">
-			<div id="fmap" style="width:100%; height: 300px;"></div>
+			<div id="fmap" style="position: relative; width:100%; height: 300px;"></div>
+			<div id="hoverinfo" style="position: absolute; top: 300px; z-Index: 1001; display: none; background: #ffffff; padding: 4px "></div>
 		        <div id="fprofile" style="margin-top: 10px; margin-bottom: 1px; width:100%; height: 100px"></div>
 			<br/>
 			<div style="float:right;" id="map-control" class="btn-group">
-				<button class="btn btn-small" onClick="display_all()"><i class="icon icon-resize-full"></i> show all </button>
-			    <button class="btn btn-small" onClick="display_last()"><i class="icon icon-resize-small"></i> show last </button>
+				<button class="btn btn-small" onClick="display_all()"><i class="icon icon-resize-full"></i> zoom out to all </button>
+			    <button class="btn btn-small" onClick="display_last()"><i class="icon icon-resize-small"></i> zoom in to last </button>
+			    <button class="btn btn-small" onClick="select_all()"><i class="icon icon-asterisk"></i> select all </button>
 			    <button class="btn btn-small" onClick="erase_all()"><i class="icon icon-remove"></i> empty map </button>
             		</div>
 		</div>
@@ -350,6 +405,12 @@ jQuery(document).ready(function($) {
    <p>Made with <a href="https://github.com/okfn/facetview">facetview</a> and <a href="http://www.elasticsearch.org/‎">elasticsearch</a>.</p>
   </footer>
 </div>
+<script id="hoverinfoTemplate" type="text/template">
+<div style="font-size:120%; line-spacing: 220%;">
+ <b><%= record.type %> <%= record.hex %></b><br/>
+ <b style="color: #990000"> <%= record.flight %></b> <%= record.start.airport %> - <%= record.end.airport %>
+</div>
+</script>
 <script id="tooltipTemplate" type="text/template">
 	<div style="font-size:150%">altitude <%= profile.a %> ft </div>
         <div><strong><%= profile.t %></strong><br/>
@@ -358,7 +419,7 @@ jQuery(document).ready(function($) {
 	<div style="font-size:150%">speed <%= profile.s %> mph</div>
 </script>
 <script id="resultTemplate" type="text/template">
-<tr><td>
+<tr class="datarow"><td>
 	<%= record.datum %>
 	</td>
 	<td class="nowrap">
