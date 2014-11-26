@@ -260,8 +260,10 @@ jQuery(document).ready(function($) {
     search_index: 'elasticsearch',
     facets: [ 
         {'field': 'start.town', 'display': 'first (town)'}, 
+        {'field': 'start.airport', 'display': 'start (airport)'}, 
         {'field': 'start.country', 'display': 'first (country)'}, 
         {'field': 'end.town', 'display': 'last (town)'}, 
+        {'field': 'end.airport', 'display': 'destination (airport)'}, 
         {'field': 'end.country', 'display': 'last (country)'}, 
         {'field': 'reg', 'display': 'registration'}, 
         {'field': 'datum', 'display': 'day'}, 
@@ -269,6 +271,7 @@ jQuery(document).ready(function($) {
         {'field': 'type', 'display': 'type'}, 
         {'field': 'radar', 'display': 'radar'}, 
         {'field': 'flight', 'display': 'flight'}, 
+        {'field': 'dataset', 'display': 'dataset'}, 
 
     ],
     result_display : [
@@ -324,6 +327,7 @@ jQuery(document).ready(function($) {
 						p["width"]=$n.width()
 						p["height"]=$n.height();
 					    $(".notify_loading").css(p);
+						$("#dataurl").attr("href","http://apps.opendatacity.de/elasticsearch/flights/_search"+document.location.search.replace(/,%22size%22:[0-9]+/,""));
 						},
 
 	pager_slider: false,
@@ -392,6 +396,8 @@ jQuery(document).ready(function($) {
 			    <button class="btn btn-small" onClick="display_last()"><i class="icon icon-resize-small"></i> zoom in to last </button>
 			    <button class="btn btn-small" onClick="select_all()"><i class="icon icon-asterisk"></i> select all </button>
 			    <button class="btn btn-small" onClick="erase_all()"><i class="icon icon-remove"></i> empty map </button>
+			    <a href="#" id="dataurl" class="btn btn-small" target="_blank" onClick="erase_all()"><i class="icon icon-download"></i> download data </a>
+			
             		</div>
 		</div>
 	<div class="row">
