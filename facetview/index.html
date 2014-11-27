@@ -76,7 +76,21 @@ jQuery(document).ready(function($) {
 	return window._marker;
   }
 
-  function profile_route(id) {
+  function closest(route,p) {
+	var d={ i: undefined, d: undefined }
+	$(route.coordinates).each(function(i,e) { 
+		var ll=new L.latLng(e[1],e[0]);
+		window.lt=ll;
+		var dist=ll.distanceTo(p);
+		if ((typeof d.d == "undefined") || (dist<d.d)){
+			d.d=dist;
+			d.i=i;
+		}
+	})
+	return d;
+  }
+
+  function profile_route(id,latlng) {
 	var cl=routes[id];
 	if ((typeof cl)=="undefined") {
 	  $("#fprofile").sparkline();
@@ -84,16 +98,28 @@ jQuery(document).ready(function($) {
 	  
 	} else {
 	 var heights=[],speeds=[]; 
+		marked=[];
 	 $(cl.profile).each(function(i,e) {
 		heights.push(e.a);
-		speeds.push(e.s)
+		speeds.push(e.s);
+		marked.push(10);
 	 });
+	 if (typeof latlng != "undefined") {
+		var d=closest(cl.route,latlng);
+		marked[d.i]=100;
+		d.lat=cl.route.coordinates[d.i][1];
+		d.lng=cl.route.coordinates[d.i][0];
+		_(d).extend(cl.profile[d.i]);
+	 } else {
+		d=false;
+	 }
 	 $("#fprofile").sparkline(heights,{ width: "100%", 
-					   height: "100px", 
+					   height: "70px", 
 				           lineColor: jsstyle.highlight.color,
-					   fillColor: jsstyle.highlight.fillColor,
+					   fillColor: jsstyle.accent.fill,
 					   highlightLineColor : jsstyle.accent.color,
 					   chartRangeMin: 0,
+					   chartRangeMax: 100,
 					   spotRadius: 2,
 					   spotColor: false, minSpotColor: false, maxSpotColor: false,
 					   highlightSpotColor: jsstyle.accent.color,
@@ -111,7 +137,19 @@ jQuery(document).ready(function($) {
 		} catch(e) {
 			momarker().setOpacity(0);
 		}
-	 });
+	 }).css({ opacity: 0.5});
+	 	$("#fprofile").sparkline(marked, {
+                                           lineColor: "#eeee30",
+					   composite: true,
+                                           maxSpotColor: "#990000",
+					   minSpotColor: false, spotColor: false, 
+					   fillColor: false,
+					   chartRangeMin: 0,
+					   chartRangeMax: _.max(marked)*2,
+					   spotRadius: 10,
+                                           highlightSpotColor: jsstyle.accent.color,
+					   tooltipFormat: "",
+	 	});
 	 $("#fprofile").sparkline(speeds, { width: "100%",
                                            height: "30px",
                                            lineColor: jsstyle.accent.color,
@@ -125,7 +163,8 @@ jQuery(document).ready(function($) {
 					   composite: true,
 					   tooltipFormat: ""
 	 })
-        }
+      }
+	return d;
   }
 
   function draw_route(t) {
@@ -137,11 +176,16 @@ jQuery(document).ready(function($) {
 	   if (typeof cl.layer== "undefined") {
 		   var text=template.hoverinfoTemplate({record : cl.record });
 		   cl.layer=L.mapbox.markerLayer(routes[e].route);
-		   cl.layer.on("mouseover", function() {
+		   cl.layer.on("mouseover mousemove", function(event) {
 			this.setStyle({ color: "#990000" });
-			$("#hoverinfo").html(text).show();
 			this.bringToFront();
-	   		profile_route(e);
+	   		pd=profile_route(e,event.latlng);
+			if (pd) {
+				tt=text+template.hoverinfoPoint(pd);
+			} else {
+				tt=text;
+			}
+			$("#hoverinfo").html(tt).show();
 		   }).on("mouseout", function() {
 			this.setStyle({ color: "#808080" });
 			$("#hoverinfo").html("").hide();
@@ -388,7 +432,7 @@ jQuery(document).ready(function($) {
     <div class="row">
 		<div class="span12">
 			<div id="fmap" style="position: relative; width:100%; height: 300px;"></div>
-			<div id="hoverinfo" style="position: absolute; top: 300px; z-Index: 1001; display: none; background: #ffffff; padding: 4px "></div>
+			<div id="hoverinfo" style="position: absolute; top: 280px; z-Index: 1001; display: none; background: #ffffff; padding: 4px "></div>
 		        <div id="fprofile" style="margin-top: 10px; margin-bottom: 1px; width:100%; height: 100px"></div>
 			<br/>
 			<div style="float:right;" id="map-control" class="btn-group">
@@ -415,6 +459,13 @@ jQuery(document).ready(function($) {
 <div style="font-size:120%; line-spacing: 220%;">
  <b><%= record.type %> <%= record.hex %></b><br/>
  <b style="color: #990000"> <%= record.flight %></b> <%= record.start.airport %> - <%= record.end.airport %>
+</div>
+</script>
+<script id="hoverinfoPoint" type="text/template">
+<div style="font-size:100%; line-spacing: 200%;">
+ Pos (<%= lat %>,<%= lng %>)<br/>
+ <span style="color: #990000"> <%= a %> ft </span> <%= s %> mph - head <%= h %><br/>
+ <%= t %>
 </div>
 </script>
 <script id="tooltipTemplate" type="text/template">
