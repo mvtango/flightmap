@@ -138,18 +138,21 @@ jQuery(document).ready(function($) {
 			momarker().setOpacity(0);
 		}
 	 }).css({ opacity: 0.5});
+	if ((d) && (marked.length>2)) {
 	 	$("#fprofile").sparkline(marked, {
-                                           lineColor: "#eeee30",
+                                           lineColor: "#ffffff",
+                                           fillColor: false,
 					   composite: true,
-                                           maxSpotColor: "#990000",
+                                           maxSpotColor: jsstyle.highlight.color,
 					   minSpotColor: false, spotColor: false, 
 					   fillColor: false,
 					   chartRangeMin: 0,
-					   chartRangeMax: _.max(marked)*2,
-					   spotRadius: 10,
+					   chartRangeMax: _.max(marked)*900,
+					   spotRadius: 4,
                                            highlightSpotColor: jsstyle.accent.color,
 					   tooltipFormat: "",
 	 	});
+	}
 	 $("#fprofile").sparkline(speeds, { width: "100%",
                                            height: "30px",
                                            lineColor: jsstyle.accent.color,
@@ -177,20 +180,31 @@ jQuery(document).ready(function($) {
 		   var text=template.hoverinfoTemplate({record : cl.record });
 		   cl.layer=L.mapbox.markerLayer(routes[e].route);
 		   cl.layer.on("mouseover mousemove", function(event) {
+			if (typeof window.lastshown != "undefined") {
+				window.lastshown.setStyle({ color: "#808080" });
+			}
 			this.setStyle({ color: "#990000" });
 			this.bringToFront();
 	   		pd=profile_route(e,event.latlng);
 			if (pd) {
 				tt=text+template.hoverinfoPoint(pd);
+				momarker().setLatLng(new L.LatLng(pd.lat,pd.lng)).setOpacity(1);
 			} else {
 				tt=text;
+				momarker().setOpacity(0);
 			}
 			$("#hoverinfo").html(tt).show();
-		   }).on("mouseout", function() {
-			this.setStyle({ color: "#808080" });
-			$("#hoverinfo").html("").hide();
-			profile_route();
+			window.lastshown=this;
+		   }).setStyle({color: "#808080"}); 
+		   /* .on("mouseout", function() {
+			var t=this;
+			window.out=_.delay(function() {
+				t.setStyle({ color: "#808080" });
+				$("#hoverinfo").html("").hide();
+				profile_route();
+			},1000);
 		   }).setStyle({ color: "#808080" });
+		   */
        	   }
 	   cl.mapped=true;
 	   disable_map_buttons(false);
@@ -331,10 +345,11 @@ jQuery(document).ready(function($) {
 	],
 	result_template: template.resultTemplate,
 	search_sortby: [
-		{"field" : "start.time", "display" : "day" },
-		{"field" : "duration", "display" : "duration" },
-		{"field" : "start.town", "display" : "first" },
-		{"field" : "end.town", "display" : "last" },
+		{"field" : "start.time", "display" : "start time" },
+		{"field" : "start.time", "display" : "end time" },
+		{"field" : "duration", "display" : "flight duration" },
+		{"field" : "start.town", "display" : "first town" },
+		{"field" : "end.town", "display" : "last town" },
 	
 	],
     paging: {
@@ -483,9 +498,9 @@ jQuery(document).ready(function($) {
 	        <a href="./?source={%22query%22:{%22bool%22:{%22must%22:[{%22term%22:{%22reg%22:%22<%= record.reg %>%22}}]}},%22size%22:20,%22sort%22:[{%22start.time%22:{%22order%22:%22desc%22}}]} "><b style="display:inline-block; width: 50%" title="<%= record.reg ? 'Filter flights by '+record.reg : 'No registration. ' %> <%= record.type ? 'Type '+record.type+' ' : '' %> <%= record.radar ? 'Radar '+record.radar+' ' : '' %> Aircraft Address <%= record.hex %>"><%= record.reg ? record.reg : '[' +record.hex+']' %> </b></a><%= record.reg ? '&nbsp;&nbsp;<a title="link to planespotters.net" target="_blank" href="http://www.planespotters.net/search.php?q='+record.reg.replace("+","%2B")+'"><i class="icon icon-plane"></i></a>' : '' %>
     </td>
     <td>
-	<span title="<%= record.start.speed %> mph / <%= Math.floor(record.start.dist+0.5) %> km / <%= record.start.alt %> ft" class="airport start <%= ((record.duration<0.3) || (record.start.alt>3000) || (record.start.dist > 9)) ? "far" : "near" %>"> 
+	<span title="<%= record.start.time %>: <%= record.start.speed %> mph / <%= Math.floor(record.start.dist+0.5) %> km / <%= record.start.alt %> ft" class="airport start <%= ((record.duration<0.3) || (record.start.alt>3000) || (record.start.dist > 9)) ? "far" : "near" %>"> 
 	<%= record.start.town %><%= record.start.country ? ', ' + record.start.country : '' %>
-	</span> - <span  title="<%= record.end.speed %> mph / <%= Math.floor(record.end.dist+0.5) %> km / <%= record.end.alt %> ft" class="airport landing <%= ((record.duration<0.3) || (record.end.alt>3000) || (record.end.dist > 9)) ? "far" : "near" %>"> 
+	</span> - <span  title="<%= record.end.time %>:  <%= record.end.speed %> mph / <%= Math.floor(record.end.dist+0.5) %> km / <%= record.end.alt %> ft" class="airport landing <%= ((record.duration<0.3) || (record.end.alt>3000) || (record.end.dist > 9)) ? "far" : "near" %>"> 
 	<%= record.end.town %><%= record.end.country ? ', ' + record.end.country : '' %>
 	</td>
 	<td>
