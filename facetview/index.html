@@ -359,6 +359,7 @@ jQuery(document).ready(function($) {
     enable_rangeselect: true,
     post_search_callback: function() { 	
 						$("#facetview_results [title]" ).tooltip();
+						$("#dataurl").attr("href","http://apps.opendatacity.de/elasticsearch/flights/_search"+document.location.search.replace(/,%22size%22:[0-9]+/,""));
 						check_if_mapped();
 						$("tr.datarow").on("mouseover", function() {
 							var cb=$("input",$(this));
