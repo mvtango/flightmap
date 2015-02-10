@@ -23,6 +23,8 @@ def nearest_airport(lng,lat) :
     for airport in nearest :
         fp=(float(airport["lat"]),float(airport["lng"]))
         airport["distance"]=distance.distance((lat,lng),fp).km
+	airport["airport_name"]=airport["airport"]  
+	del airport["airport"]
     return nearest
 
 

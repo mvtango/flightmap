@@ -117,6 +117,9 @@ lplanes=0
 data = ""
 timer=None 
 SkyScraperClient=Client()
+# 
+scraper_url="http://arn.data.fr24.com/zones/fcgi/feed.js"
+
 
 if __name__ == '__main__':
 
@@ -146,7 +149,7 @@ if __name__ == '__main__':
 				# print timeString + ' (' + str(count) + ')'
 				logger.info("scraper run # %s, %s planes" % (str(count),str(planes)))
 				try :
-					planeText = urllib2.urlopen("http://krk.fr24.com/zones/full_all.js").read()
+					planeText = urllib2.urlopen(scraper_url).read()
 				except urllib2.URLError,e :
 					logger.error("URL Open Error: %s" % e)
 					planeText=""
